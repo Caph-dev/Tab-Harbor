@@ -42,6 +42,9 @@ const TODOS_KEY = 'todos';
 let savedTabsCache = null;
 let todosCache = null;
 let deferredTriggerPositionLoaded = false;
+let deferredContentRenderFrame = 0;
+let deferredContentRenderPostPaintFrame = 0;
+let deferredContentRenderToken = 0;
 
 if (globalThis.chrome?.storage?.onChanged?.addListener) {
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -140,6 +143,117 @@ function applyDeferredTriggerPosition() {
     24
   );
   triggerStack.style.top = `${normalizedTop}px`;
+}
+
+function cancelDeferredContentRender() {
+  deferredContentRenderToken += 1;
+  if (deferredContentRenderFrame) {
+    cancelAnimationFrame(deferredContentRenderFrame);
+    deferredContentRenderFrame = 0;
+  }
+  if (deferredContentRenderPostPaintFrame) {
+    cancelAnimationFrame(deferredContentRenderPostPaintFrame);
+    deferredContentRenderPostPaintFrame = 0;
+  }
+}
+
+function applyDeferredShellState() {
+  const column = document.getElementById('drawerColumn');
+  const triggerStack = document.getElementById('drawerTriggerStack');
+  const trigger = document.getElementById('deferredTrigger');
+  const todoTrigger = document.getElementById('todoTrigger');
+  const overlay = document.getElementById('deferredOverlay');
+  const savedPanel = document.getElementById('savedPanel');
+  const todoPanel = document.getElementById('todoPanel');
+  const savedSearchWrap = document.getElementById('savedSearchWrap');
+  const savedSearchInput = document.getElementById('savedSearchInput');
+  const savedSearchToggle = document.getElementById('savedSearchToggle');
+  const todoSearchWrap = document.getElementById('todoSearchWrap');
+  const todoSearchInput = document.getElementById('todoSearchInput');
+  const todoSearchToggle = document.getElementById('todoSearchToggle');
+  const titleButtons = document.querySelectorAll('.drawer-title-btn');
+
+  if (!column || !trigger || !overlay) return false;
+
+  column.style.display = 'block';
+  if (triggerStack) triggerStack.style.display = 'flex';
+  trigger.style.display = 'inline-flex';
+  if (todoTrigger) todoTrigger.style.display = 'inline-flex';
+
+  column.classList.toggle('open', deferredPanelOpen);
+  column.setAttribute('aria-hidden', String(!deferredPanelOpen));
+  trigger.setAttribute('aria-expanded', String(deferredPanelOpen && drawerView === 'saved'));
+  trigger.setAttribute(
+    'aria-label',
+    drawerLabel(deferredPanelOpen && drawerView === 'saved' ? 'closeSavedForLater' : 'openSavedForLater')
+  );
+  if (todoTrigger) {
+    todoTrigger.setAttribute('aria-expanded', String(deferredPanelOpen && drawerView === 'todos'));
+    todoTrigger.setAttribute(
+      'aria-label',
+      drawerLabel(deferredPanelOpen && drawerView === 'todos' ? 'closeTodos' : 'openTodos')
+    );
+  }
+
+  overlay.hidden = !deferredPanelOpen;
+  overlay.classList.toggle('visible', deferredPanelOpen);
+  applyDeferredTriggerPosition();
+
+  savedPanel?.classList.toggle('is-active', drawerView === 'saved');
+  todoPanel?.classList.toggle('is-active', drawerView === 'todos');
+  titleButtons.forEach(button => {
+    const isActive = button.dataset.view === drawerView;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-selected', String(isActive));
+    button.tabIndex = isActive ? 0 : -1;
+  });
+
+  if (savedSearchToggle) {
+    savedSearchToggle.setAttribute('aria-expanded', String(savedSearchOpen && drawerView === 'saved'));
+  }
+  if (savedSearchWrap) {
+    const showSavedSearch = savedSearchOpen && drawerView === 'saved';
+    savedSearchWrap.style.display = showSavedSearch ? 'block' : 'none';
+    savedSearchWrap.hidden = !showSavedSearch;
+  }
+  if (savedSearchInput && savedSearchInput.value !== savedSearchQuery) savedSearchInput.value = savedSearchQuery;
+
+  if (todoSearchToggle) {
+    todoSearchToggle.setAttribute('aria-expanded', String(todoSearchOpen && drawerView === 'todos'));
+  }
+  if (todoSearchWrap) {
+    const showTodoSearch = todoSearchOpen && drawerView === 'todos';
+    todoSearchWrap.style.display = showTodoSearch ? 'block' : 'none';
+    todoSearchWrap.hidden = !showTodoSearch;
+  }
+  if (todoSearchInput && todoSearchInput.value !== todoSearchQuery) todoSearchInput.value = todoSearchQuery;
+
+  return true;
+}
+
+function focusDeferredPanel() {
+  const preferredFocusId = drawerView === 'todos'
+    ? (todoSearchOpen ? 'todoSearchInput' : 'todoPanel')
+    : (savedSearchOpen ? 'savedSearchInput' : 'savedPanel');
+  const preferredTarget = document.getElementById(preferredFocusId);
+  if (preferredTarget?.focus) {
+    preferredTarget.focus({ preventScroll: true });
+  } else {
+    focusFirstElement(document.getElementById('drawerColumn'));
+  }
+}
+
+function scheduleDeferredContentRender(contentScope = 'active') {
+  cancelDeferredContentRender();
+  const renderToken = deferredContentRenderToken;
+  deferredContentRenderFrame = requestAnimationFrame(() => {
+    deferredContentRenderFrame = 0;
+    deferredContentRenderPostPaintFrame = requestAnimationFrame(() => {
+      deferredContentRenderPostPaintFrame = 0;
+      if (renderToken !== deferredContentRenderToken || !deferredPanelOpen) return;
+      void renderDeferredColumn({ contentScope });
+    });
+  });
 }
 
 async function saveTabForLater(tab) {
@@ -385,11 +499,12 @@ async function reopenSavedTab(url) {
   return createdTab;
 }
 
-async function renderDeferredColumn() {
+async function renderDeferredColumn({ contentScope = 'all' } = {}) {
+  if (contentScope === 'all') cancelDeferredContentRender();
+
   const column = document.getElementById('drawerColumn');
   const triggerStack = document.getElementById('drawerTriggerStack');
   const trigger = document.getElementById('deferredTrigger');
-  const todoTrigger = document.getElementById('todoTrigger');
   const overlay = document.getElementById('deferredOverlay');
   const list = document.getElementById('deferredList');
   const empty = document.getElementById('deferredEmpty');
@@ -398,56 +513,14 @@ async function renderDeferredColumn() {
   const archiveCountEl = document.getElementById('archiveCount');
   const archiveList = document.getElementById('archiveList');
   const clearArchiveBtn = document.getElementById('clearArchiveBtn');
-  const savedPanel = document.getElementById('savedPanel');
-  const todoPanel = document.getElementById('todoPanel');
-  const savedSearchWrap = document.getElementById('savedSearchWrap');
-  const savedSearchInput = document.getElementById('savedSearchInput');
-  const savedSearchToggle = document.getElementById('savedSearchToggle');
   const archiveToggle = document.getElementById('archiveToggle');
   const archiveBody = document.getElementById('archiveBody');
-  const titleButtons = document.querySelectorAll('.drawer-title-btn');
 
   if (!column) return;
 
   try {
-    const { active, archived } = getCachedSavedTabs() || await getSavedTabs();
-    if (!getCachedTodos()) await getTodos();
     await loadDeferredTriggerPosition();
-    column.style.display = 'block';
-    if (triggerStack) triggerStack.style.display = 'flex';
-    trigger.style.display = 'inline-flex';
-    if (todoTrigger) todoTrigger.style.display = 'inline-flex';
-    column.classList.toggle('open', deferredPanelOpen);
-    column.setAttribute('aria-hidden', String(!deferredPanelOpen));
-    trigger.setAttribute('aria-expanded', String(deferredPanelOpen));
-    trigger.setAttribute('aria-label', drawerLabel(deferredPanelOpen ? 'closeSavedForLater' : 'openSavedForLater'));
-    if (todoTrigger) {
-      todoTrigger.setAttribute('aria-expanded', String(deferredPanelOpen && drawerView === 'todos'));
-      todoTrigger.setAttribute(
-        'aria-label',
-        drawerLabel(deferredPanelOpen && drawerView === 'todos' ? 'closeTodos' : 'openTodos')
-      );
-    }
-    overlay.hidden = !deferredPanelOpen;
-    overlay.classList.toggle('visible', deferredPanelOpen);
-    applyDeferredTriggerPosition();
-    savedPanel?.classList.toggle('is-active', drawerView === 'saved');
-    todoPanel?.classList.toggle('is-active', drawerView === 'todos');
-    titleButtons.forEach(button => {
-      const isActive = button.dataset.view === drawerView;
-      button.classList.toggle('is-active', isActive);
-      button.setAttribute('aria-selected', String(isActive));
-      button.tabIndex = isActive ? 0 : -1;
-    });
-    if (savedSearchToggle) {
-      savedSearchToggle.setAttribute('aria-expanded', String(savedSearchOpen && drawerView === 'saved'));
-    }
-    if (savedSearchWrap) {
-      const showSavedSearch = savedSearchOpen && drawerView === 'saved';
-      savedSearchWrap.style.display = showSavedSearch ? 'block' : 'none';
-      savedSearchWrap.hidden = !showSavedSearch;
-    }
-    if (savedSearchInput && savedSearchInput.value !== savedSearchQuery) savedSearchInput.value = savedSearchQuery;
+    applyDeferredShellState();
     if (archiveToggle && archiveBody) {
       const archiveExpanded = archiveBody.style.display !== 'none' && !archiveBody.hidden;
       archiveToggle.setAttribute('aria-expanded', String(archiveExpanded));
@@ -457,42 +530,50 @@ async function renderDeferredColumn() {
       if (triggerStack) drawerApplyDomTranslations(triggerStack);
     }
 
-    const savedNeedle = savedSearchQuery.trim().toLowerCase();
-    const filteredActive = !savedNeedle
-      ? active
-      : active.filter(item =>
-          (item.title || '').toLowerCase().includes(savedNeedle) ||
-          (item.url || '').toLowerCase().includes(savedNeedle)
-        );
-    const filteredArchived = !savedNeedle
-      ? archived
-      : archived.filter(item =>
-          (item.title || '').toLowerCase().includes(savedNeedle) ||
-          (item.url || '').toLowerCase().includes(savedNeedle)
-        );
+    const shouldRenderSaved = contentScope === 'all' || drawerView === 'saved';
+    const shouldRenderTodos = contentScope === 'all' || drawerView === 'todos';
 
-    if (filteredActive.length > 0) {
-      countEl.textContent = drawerSavedItemsCount(active.length);
-      list.innerHTML = filteredActive.map(item => renderDeferredItem(item)).join('');
-      list.style.display = 'block';
-      empty.style.display = 'none';
-    } else {
-      list.style.display = 'none';
-      countEl.textContent = '';
-      empty.style.display = 'block';
+    if (shouldRenderSaved) {
+      const { active, archived } = getCachedSavedTabs() || await getSavedTabs();
+      const savedNeedle = savedSearchQuery.trim().toLowerCase();
+      const filteredActive = !savedNeedle
+        ? active
+        : active.filter(item =>
+            (item.title || '').toLowerCase().includes(savedNeedle) ||
+            (item.url || '').toLowerCase().includes(savedNeedle)
+          );
+      const filteredArchived = !savedNeedle
+        ? archived
+        : archived.filter(item =>
+            (item.title || '').toLowerCase().includes(savedNeedle) ||
+            (item.url || '').toLowerCase().includes(savedNeedle)
+          );
+
+      if (filteredActive.length > 0) {
+        countEl.textContent = drawerSavedItemsCount(active.length);
+        list.innerHTML = filteredActive.map(item => renderDeferredItem(item)).join('');
+        list.style.display = 'block';
+        empty.style.display = 'none';
+      } else {
+        list.style.display = 'none';
+        countEl.textContent = '';
+        empty.style.display = 'block';
+      }
+
+      if (filteredArchived.length > 0) {
+        archiveCountEl.textContent = `(${archived.length})`;
+        archiveList.innerHTML = filteredArchived.map(item => renderArchiveItem(item)).join('');
+        archiveEl.style.display = 'block';
+        if (clearArchiveBtn) clearArchiveBtn.style.display = 'inline-flex';
+      } else {
+        archiveEl.style.display = 'none';
+        if (clearArchiveBtn) clearArchiveBtn.style.display = 'none';
+      }
     }
 
-    if (filteredArchived.length > 0) {
-      archiveCountEl.textContent = `(${archived.length})`;
-      archiveList.innerHTML = filteredArchived.map(item => renderArchiveItem(item)).join('');
-      archiveEl.style.display = 'block';
-      if (clearArchiveBtn) clearArchiveBtn.style.display = 'inline-flex';
-    } else {
-      archiveEl.style.display = 'none';
-      if (clearArchiveBtn) clearArchiveBtn.style.display = 'none';
+    if (shouldRenderTodos) {
+      await renderTodoPanel();
     }
-
-    await renderTodoPanel();
   } catch (err) {
     console.warn('[tab-harbor] Could not load saved tabs:', err);
     column.style.display = 'none';
@@ -509,23 +590,19 @@ function setDeferredPanelOpen(nextOpen) {
     drawerFocusReturnEl = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
   deferredPanelOpen = shouldOpen;
-  renderDeferredColumn().then(() => {
-    if (deferredPanelOpen) {
-      const preferredFocusId = drawerView === 'todos'
-        ? (todoSearchOpen ? 'todoSearchInput' : 'todoPanel')
-        : (savedSearchOpen ? 'savedSearchInput' : 'savedPanel');
-      const preferredTarget = document.getElementById(preferredFocusId);
-      if (preferredTarget?.focus) {
-        preferredTarget.focus({ preventScroll: true });
-      } else {
-        focusFirstElement(document.getElementById('drawerColumn'));
-      }
-      return;
-    }
+  cancelDeferredContentRender();
+  applyDeferredShellState();
 
+  if (deferredPanelOpen) {
+    focusDeferredPanel();
+    scheduleDeferredContentRender('active');
+    return;
+  }
+
+  if (drawerFocusReturnEl) {
     drawerFocusReturnEl?.focus?.({ preventScroll: true });
     drawerFocusReturnEl = null;
-  });
+  }
 }
 
 function renderDeferredItem(item) {

@@ -1687,6 +1687,22 @@ function renderGroupNavArea(groups) {
           </div>
         </div>
         <div class="theme-menu-section">
+          <div class="theme-menu-row theme-menu-row-inline-range">
+            <div class="theme-menu-label">${runtimeT ? runtimeT('drawerSpeed') : 'Drawer speed'}</div>
+            <input
+              class="theme-range"
+              id="drawerSpeedRange"
+              type="range"
+              aria-label="${runtimeT ? runtimeT('drawerSpeed') : 'Drawer speed'}"
+              min="1"
+              max="5"
+              step="1"
+              value="4"
+            >
+            <div class="theme-range-value" id="drawerSpeedValue">4/5</div>
+          </div>
+        </div>
+        <div class="theme-menu-section">
           <label class="theme-menu-toggle-label">
             <input type="checkbox" data-action="toggle-chrome-tab-groups"${chromeTabGroupsEnabled ? ' checked' : ''} aria-label="${runtimeT ? runtimeT('chromeTabGroupsLabel') : 'Chrome tab groups'}">
             <span class="theme-menu-toggle-slider"></span>
@@ -2917,6 +2933,18 @@ document.addEventListener('input', async (e) => {
     applyThemePreferences();
     const valueEl = document.getElementById('themeTransparencyValue');
     if (valueEl) valueEl.textContent = `${themePreferences.surfaceOpacity}%`;
+    await chrome.storage.local.set({ [THEME_PREFERENCES_KEY]: themePreferences });
+    return;
+  }
+
+  if (e.target.id === 'drawerSpeedRange') {
+    themePreferences = normalizeThemePreferences({
+      ...themePreferences,
+      drawerSpeed: Number(e.target.value),
+    });
+    applyThemePreferences();
+    const valueEl = document.getElementById('drawerSpeedValue');
+    if (valueEl) valueEl.textContent = `${themePreferences.drawerSpeed}/5`;
     await chrome.storage.local.set({ [THEME_PREFERENCES_KEY]: themePreferences });
     return;
   }

@@ -237,6 +237,10 @@ test('deferred drawer styles and behavior are wired up', () => {
   assert.match(css, /\.deferred-overlay\.visible\s*\{/);
   assert.match(css, /\.deferred-column\.open\s*\{/);
   assert.match(css, /\.deferred-column\s*\{[\s\S]*width:\s*min\(50vw,\s*calc\(100vw - 40px\)\);/);
+  assert.match(css, /--drawer-transition-duration:\s*140ms;/);
+  assert.match(css, /\.deferred-column\s*\{[\s\S]*transition:\s*opacity var\(--drawer-transition-duration\) ease,\s*transform var\(--drawer-transition-duration\) ease;/);
+  assert.match(css, /\.deferred-column\s*\{[\s\S]*contain:\s*layout paint style;/);
+  assert.match(css, /\.deferred-column\s*\{[\s\S]*will-change:\s*transform,\s*opacity;/);
   assert.match(css, /@media \(max-width:\s*960px\)\s*\{[\s\S]*\.deferred-column\s*\{[\s\S]*width:\s*100%;/);
   assert.match(deferredTitleRule, /display:\s*-webkit-box;/);
   assert.match(deferredTitleRule, /-webkit-box-orient:\s*vertical;/);
@@ -259,6 +263,8 @@ test('deferred drawer styles and behavior are wired up', () => {
   assert.match(html, /id="savedSearchToggle"/);
   assert.match(html, /id="todoNewBtn"/);
   assert.match(css, /\.deferred-header\s*\{[\s\S]*animation:\s*none/);
+  const deferredItemRule = css.match(/\.deferred-item\s*\{[^}]*\}/)?.[0] || '';
+  assert.doesNotMatch(deferredItemRule, /animation:/);
   assert.match(css, /\.drawer-title-btn\s*\{[\s\S]*text-decoration:\s*underline/);
 });
 
@@ -317,7 +323,13 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(appJs, /id="themeBackgroundInput"/);
   assert.match(appJs, /id="themeTransparencyRange"/);
   assert.match(appJs, /id="themeTransparencyValue"/);
+  assert.match(appJs, /id="drawerSpeedRange"/);
+  assert.match(appJs, /id="drawerSpeedValue"/);
+  assert.match(appJs, /runtimeT \? runtimeT\('drawerSpeed'\) : 'Drawer speed'/);
   assert.match(themeJs, /Math\.min\(60, Math\.max\(2, Math\.round\(rawOpacity\)\)\)/);
+  assert.match(themeJs, /const DRAWER_SPEED_DEFAULT = 4/);
+  assert.match(themeJs, /--drawer-transition-duration/);
+  assert.match(appJs, /e\.target\.id === 'drawerSpeedRange'/);
   assert.match(appJs, /chrome\.search\?\.query/);
   assert.match(appJs, /disposition:\s*'CURRENT_TAB'/);
   assert.match(appJs, /e\.target\.id !== 'headerSearchForm'/);
@@ -639,6 +651,8 @@ test('theme state uses separate mode and palette preferences', () => {
   assert.match(appJs, /themeModeSystem/);
   assert.match(appJs, /themeModeLight/);
   assert.match(appJs, /themeModeDark/);
+  assert.match(themeJs, /drawerSpeed:\s*DRAWER_SPEED_DEFAULT/);
+  assert.match(themeJs, /drawerSpeed:\s*normalizeDrawerSpeed\(next\.drawerSpeed\)/);
 });
 
 test('quick shortcut left clicks overwrite the current Tab Harbor tab', () => {
@@ -754,6 +768,22 @@ test('drawer search uses cached data and frame-coalesced rerendering', () => {
   assert.match(runtimeJs, /requestAnimationFrame\(\(\) => \{[\s\S]*renderDeferredColumn\(\)/);
   assert.match(runtimeJs, /if \(e\.target\.id !== 'savedSearchInput'\) return;[\s\S]*scheduleDrawerSearchRender\(\);/);
   assert.match(runtimeJs, /if \(e\.target\.id !== 'todoSearchInput'\) return;[\s\S]*scheduleDrawerSearchRender\(\);/);
+});
+
+test('drawer open applies shell state before post-paint active content render', () => {
+  assert.match(drawerJs, /function applyDeferredShellState\(\)/);
+  assert.match(drawerJs, /function scheduleDeferredContentRender\(contentScope = 'active'\)/);
+  assert.match(
+    drawerJs,
+    /deferredContentRenderFrame = requestAnimationFrame\(\(\) => \{[\s\S]*deferredContentRenderPostPaintFrame = requestAnimationFrame\(\(\) => \{[\s\S]*renderDeferredColumn\(\{ contentScope \}\)/
+  );
+  assert.match(
+    drawerJs,
+    /function setDeferredPanelOpen\(nextOpen\) \{[\s\S]*cancelDeferredContentRender\(\);[\s\S]*applyDeferredShellState\(\);[\s\S]*focusDeferredPanel\(\);[\s\S]*scheduleDeferredContentRender\('active'\);/
+  );
+  assert.match(drawerJs, /async function renderDeferredColumn\(\{ contentScope = 'all' \} = \{\}\)/);
+  assert.match(drawerJs, /const shouldRenderSaved = contentScope === 'all' \|\| drawerView === 'saved'/);
+  assert.match(drawerJs, /const shouldRenderTodos = contentScope === 'all' \|\| drawerView === 'todos'/);
 });
 
 test('drag previews skip DOM work when the insertion target has not changed', () => {

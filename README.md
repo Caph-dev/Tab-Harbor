@@ -32,7 +32,9 @@ This fork keeps the original Tab Harbor idea, but this README only records the c
 - Kept the group navigation inside the left open-tabs column so the right rail can move upward into the space freed by those controls.
 - Updated the theme menu to open upward from the bottom-right controls, with a fixed mobile placement so it stays inside the viewport and avoids the drawer triggers.
 - Tuned the right-side search box spacing so its top border visually aligns with the divider line in the left open-tabs section header.
-- Added UI regression coverage for the new group navigation placement, bottom-right floating controls, upward theme menu, and search spacing.
+- Made the right drawer feel more immediate by opening the shell first, then refreshing only the active drawer view after paint.
+- Added a drawer speed slider to Desk settings, with a faster default and persisted 1-5 speed levels.
+- Added UI regression coverage for the new group navigation placement, bottom-right floating controls, upward theme menu, search spacing, drawer open path, and drawer speed setting.
 
 ### Popup experience
 

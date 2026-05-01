@@ -58,6 +58,7 @@
   --drawer-tab-underline-hover: color-mix(in srgb, var(--workspace-accent-border) 64%, transparent);
   --drawer-tab-underline-active: color-mix(in srgb, var(--workspace-accent-border) 72%, transparent);
   --drawer-tab-underline-pressed: color-mix(in srgb, var(--workspace-accent-border) 78%, transparent);
+  --drawer-transition-duration: 140ms;
   --focus-ring: color-mix(in srgb, var(--workspace-accent) 56%, white 44%);
   --focus-ring-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-accent-soft) 82%, transparent);
 }
@@ -2827,7 +2828,9 @@ body.dashboard-refreshing footer {
   opacity: 0;
   pointer-events: none;
   transform: translateX(24px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition: opacity var(--drawer-transition-duration) ease, transform var(--drawer-transition-duration) ease;
+  contain: layout paint style;
+  will-change: transform, opacity;
   z-index: 91;
 }
 
@@ -3041,7 +3044,6 @@ body.dashboard-refreshing footer {
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid rgba(154, 145, 138, 0.12);
-  animation: fadeUp 0.3s ease both;
   position: relative;
   contain: layout paint style;
 }

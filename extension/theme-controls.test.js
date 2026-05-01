@@ -33,6 +33,7 @@ const {
   getQuickShortcutIconStylePreferences,
   getResolvedThemeDefinition,
   getResolvedTone,
+  normalizeDrawerSpeed,
   normalizeShortcutIconRadius,
   normalizeShortcutIconSize,
   normalizeShortcutUrl,
@@ -69,6 +70,13 @@ test('normalizeThemePreferences keeps global quick shortcut icon style', () => {
   });
   assert.equal(result.quickShortcutIconSize, 38);
   assert.equal(result.quickShortcutIconRadius, 14);
+});
+
+test('normalizeThemePreferences keeps drawer speed preference', () => {
+  const result = normalizeThemePreferences({ drawerSpeed: 5 });
+  assert.equal(result.drawerSpeed, 5);
+  assert.equal(normalizeThemePreferences({ drawerSpeed: 99 }).drawerSpeed, 5);
+  assert.equal(normalizeThemePreferences({ drawerSpeed: 'bad' }).drawerSpeed, 4);
 });
 
 test('getResolvedTone follows system preference when mode is system', () => {
@@ -251,6 +259,9 @@ test('icon mask style helpers clamp to supported ranges', () => {
   assert.equal(normalizeShortcutIconSize('bad', 'rounded'), 36);
   assert.equal(normalizeShortcutIconRadius(-1, 'rounded'), 0);
   assert.equal(normalizeShortcutIconRadius('bad', 'rounded'), 10);
+  assert.equal(normalizeDrawerSpeed(0), 1);
+  assert.equal(normalizeDrawerSpeed(9), 5);
+  assert.equal(normalizeDrawerSpeed('bad'), 4);
 });
 
 test('quick shortcut icon style helpers expose global CSS variables', () => {

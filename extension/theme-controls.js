@@ -78,6 +78,16 @@ const SHORTCUT_ICON_MIN_SIZE = 24;
 const SHORTCUT_ICON_MAX_SIZE = 40;
 const SHORTCUT_ICON_MIN_RADIUS = 0;
 const SHORTCUT_ICON_MAX_RADIUS = 20;
+const DRAWER_SPEED_MIN = 1;
+const DRAWER_SPEED_MAX = 5;
+const DRAWER_SPEED_DEFAULT = 4;
+const DRAWER_SPEED_DURATION_MS = {
+  1: 260,
+  2: 220,
+  3: 180,
+  4: 140,
+  5: 100,
+};
 const THEME_MODE_LABEL_KEYS = {
   system: 'themeModeSystem',
   light: 'themeModeLight',
@@ -260,6 +270,7 @@ let themePreferences = {
   surfaceOpacity: 14,
   quickShortcutIconSize: SHORTCUT_ICON_DEFAULT_SIZE,
   quickShortcutIconRadius: SHORTCUT_ICON_MASK_RADIUS,
+  drawerSpeed: DRAWER_SPEED_DEFAULT,
   hitokotoEnabled: true,
 };
 
@@ -284,6 +295,7 @@ function normalizeThemePreferences(input) {
     surfaceOpacity,
     quickShortcutIconSize: shortcutIconStyle.iconSize,
     quickShortcutIconRadius: shortcutIconStyle.iconMaskRadius,
+    drawerSpeed: normalizeDrawerSpeed(next.drawerSpeed),
     hitokotoEnabled: next.hitokotoEnabled !== false,
   };
 }
@@ -329,6 +341,10 @@ function normalizeShortcutIconRadius(value, iconMask = 'none') {
     SHORTCUT_ICON_MAX_RADIUS,
     iconMask === 'rounded' ? SHORTCUT_ICON_MASK_RADIUS : SHORTCUT_ICON_DEFAULT_RADIUS
   );
+}
+
+function normalizeDrawerSpeed(value) {
+  return clampNumber(value, DRAWER_SPEED_MIN, DRAWER_SPEED_MAX, DRAWER_SPEED_DEFAULT);
 }
 
 function getQuickShortcutIconStylePreferences(input = themePreferences) {
@@ -500,6 +516,14 @@ function computeQuickShortcutIconStyleVars(input = themePreferences) {
   };
 }
 
+function computeDrawerMotionVars(input = themePreferences) {
+  const drawerSpeed = normalizeDrawerSpeed(input?.drawerSpeed);
+  const duration = DRAWER_SPEED_DURATION_MS[drawerSpeed] || DRAWER_SPEED_DURATION_MS[DRAWER_SPEED_DEFAULT];
+  return {
+    '--drawer-transition-duration': `${duration}ms`,
+  };
+}
+
 function getQuickShortcutIconStyleAttribute(input = themePreferences) {
   return Object.entries(computeQuickShortcutIconStyleVars(input))
     .map(([name, value]) => `${name}:${value}`)
@@ -512,6 +536,7 @@ function applyThemePreferences() {
   const theme = getResolvedThemeDefinition(themePreferences);
   const opacityVars = computeThemeOpacityVars(themePreferences.surfaceOpacity);
   const shortcutIconVars = computeQuickShortcutIconStyleVars(themePreferences);
+  const drawerMotionVars = computeDrawerMotionVars(themePreferences);
 
   Object.entries(theme.vars).forEach(([name, value]) => {
     root.style.setProperty(name, value);
@@ -520,6 +545,9 @@ function applyThemePreferences() {
     root.style.setProperty(name, value);
   });
   Object.entries(shortcutIconVars).forEach(([name, value]) => {
+    root.style.setProperty(name, value);
+  });
+  Object.entries(drawerMotionVars).forEach(([name, value]) => {
     root.style.setProperty(name, value);
   });
   if (body) {
@@ -551,12 +579,25 @@ function renderThemeMenu() {
   const options = document.getElementById('themeOptions');
   const transparencyRange = document.getElementById('themeTransparencyRange');
   const transparencyValue = document.getElementById('themeTransparencyValue');
-  if (!trigger || !panel || !modeOptions || !options || !transparencyRange || !transparencyValue) return;
+  const drawerSpeedRange = document.getElementById('drawerSpeedRange');
+  const drawerSpeedValue = document.getElementById('drawerSpeedValue');
+  if (
+    !trigger ||
+    !panel ||
+    !modeOptions ||
+    !options ||
+    !transparencyRange ||
+    !transparencyValue ||
+    !drawerSpeedRange ||
+    !drawerSpeedValue
+  ) return;
 
   trigger.setAttribute('aria-expanded', String(themeMenuOpen));
   panel.hidden = !themeMenuOpen;
   transparencyRange.value = String(themePreferences.surfaceOpacity);
   transparencyValue.textContent = `${themePreferences.surfaceOpacity}%`;
+  drawerSpeedRange.value = String(themePreferences.drawerSpeed);
+  drawerSpeedValue.textContent = `${themePreferences.drawerSpeed}/5`;
   if (pinToggle && typeof groupOrderState !== 'undefined') {
     const pinTooltip = groupOrderState.pinEnabled
       ? (themeT ? themeT('pinnedOrder') : 'Pinned order')
@@ -2541,6 +2582,7 @@ async function saveThemePreferences(nextPreferences) {
 
 globalThis.TabOutThemeControls = {
   filterRealTabs,
+  computeDrawerMotionVars,
   computeQuickShortcutIconStyleVars,
   createShortcutIconCandidates,
   extractShortcutIconCandidatesFromHtml,
@@ -2548,6 +2590,7 @@ globalThis.TabOutThemeControls = {
   getQuickShortcutIconStyleAttribute,
   getQuickShortcutIconStylePreferences,
   getShortcutIconSearchHostname,
+  normalizeDrawerSpeed,
   normalizeShortcutIconRadius,
   normalizeShortcutIconSize,
   getResolvedThemeDefinition,
