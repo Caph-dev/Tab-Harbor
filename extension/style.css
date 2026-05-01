@@ -2595,7 +2595,7 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   top: 20px;
   right: 20px;
   bottom: 20px;
-  width: min(392px, calc(100vw - 40px));
+  width: min(50vw, calc(100vw - 40px));
   padding: 0;
   background: transparent;
   opacity: 0;
@@ -2860,10 +2860,11 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   line-height: 1.45;
   color: var(--ink);
   text-decoration: none;
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
   transition: color 0.15s;
 }
 

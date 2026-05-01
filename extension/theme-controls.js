@@ -38,6 +38,7 @@ let quickShortcutDraggedEl = null;
 let quickShortcutGhostEl = null;
 let quickShortcutSlotEl = null;
 let quickShortcutSuppressClickUntil = 0;
+let quickShortcutMiddleClickSuppressUntil = 0;
 
 // ---- Tab Picker state ----
 let tabPickerOpen = false;
@@ -1799,10 +1800,45 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+async function handleQuickShortcutMiddleOpen(shortcutButton, e) {
+  if (!shortcutButton) return false;
+  if (shortcutButton.dataset.action !== 'open-quick-shortcut') return;
+
+  e?.preventDefault?.();
+  e?.stopImmediatePropagation?.();
+  const now = Date.now();
+  if (now < quickShortcutSuppressClickUntil || now < quickShortcutMiddleClickSuppressUntil) return false;
+
+  const url = shortcutButton.dataset.shortcutUrl;
+  if (!url) return false;
+
+  const runtime = globalThis.TabHarborDashboardRuntime;
+  if (typeof runtime?.openUrlInBackgroundTab !== 'function') {
+    return false;
+  }
+
+  quickShortcutMiddleClickSuppressUntil = now + 600;
+  await runtime.openUrlInBackgroundTab(url);
+  return true;
+}
+
+document.addEventListener('auxclick', async (e) => {
+  const shortcutButton = e.target.closest('.quick-shortcut-open');
+  if (!shortcutButton || e.button !== 1) return;
+  await handleQuickShortcutMiddleOpen(shortcutButton, e);
+});
+
 document.addEventListener('pointerdown', (e) => {
   const shortcutButton = e.target.closest('.quick-shortcut-open');
-  if (!shortcutButton || e.button !== 0) return;
+  if (!shortcutButton) return;
   if (shortcutButton.dataset.action !== 'open-quick-shortcut') return;
+
+  if (e.button === 1) {
+    void handleQuickShortcutMiddleOpen(shortcutButton, e);
+    return;
+  }
+
+  if (e.button !== 0) return;
 
   const item = shortcutButton.closest('[data-shortcut-id]');
   const listEl = item?.parentElement;

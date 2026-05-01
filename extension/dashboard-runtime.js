@@ -1189,6 +1189,12 @@ async function openOrFocusUrl(url) {
   return true;
 }
 
+async function openUrlInBackgroundTab(url) {
+  if (!url) return false;
+  await chrome.tabs.create({ url, active: false });
+  return true;
+}
+
 async function runDefaultSearch(query) {
   const text = String(query || '').trim();
   if (!text) return;
@@ -1294,7 +1300,7 @@ function getRealTabs() {
 /**
  * checkTabOutDupes()
  *
- * Counts how many Tab Harbor pages are open. If more than 1,
+ * Counts how many Tab Harbor pages are open. If at least 3,
  * shows a banner offering to close the extras.
  */
 function checkTabOutDupes() {
@@ -1303,7 +1309,7 @@ function checkTabOutDupes() {
   const countEl = document.getElementById('tabOutDupeCount');
   if (!banner) return;
 
-  if (tabOutTabs.length > 1) {
+  if (tabOutTabs.length >= 3) {
     if (countEl) countEl.textContent = tabOutTabs.length;
     banner.style.display = 'flex';
   } else {
@@ -3072,4 +3078,5 @@ globalThis.TabHarborDashboardRuntime = {
   mountDashboardRuntime,
   fetchOpenTabs,
   getOpenTabs: () => openTabs,
+  openUrlInBackgroundTab,
 };

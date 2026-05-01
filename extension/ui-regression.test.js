@@ -227,6 +227,7 @@ test('back-to-top button styles and behavior are wired up', () => {
 test('deferred drawer styles and behavior are wired up', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const deferredTitleRule = css.match(/\.deferred-title\s*\{[^}]*\}/)?.[0] || '';
 
   assert.match(css, /\.drawer-header-actions\s*\{/);
   assert.match(css, /\.drawer-icon-btn\s*\{/);
@@ -234,6 +235,13 @@ test('deferred drawer styles and behavior are wired up', () => {
   assert.match(css, /\.deferred-trigger\s*\{/);
   assert.match(css, /\.deferred-overlay\.visible\s*\{/);
   assert.match(css, /\.deferred-column\.open\s*\{/);
+  assert.match(css, /\.deferred-column\s*\{[\s\S]*width:\s*min\(50vw,\s*calc\(100vw - 40px\)\);/);
+  assert.match(css, /@media \(max-width:\s*960px\)\s*\{[\s\S]*\.deferred-column\s*\{[\s\S]*width:\s*100%;/);
+  assert.match(deferredTitleRule, /display:\s*-webkit-box;/);
+  assert.match(deferredTitleRule, /-webkit-box-orient:\s*vertical;/);
+  assert.match(deferredTitleRule, /-webkit-line-clamp:\s*2;/);
+  assert.match(deferredTitleRule, /overflow:\s*hidden;/);
+  assert.doesNotMatch(deferredTitleRule, /white-space:\s*nowrap;/);
   assert.match(appJs, /const nextOpen = !\(deferredPanelOpen && drawerView === 'saved'\)/);
   assert.match(appJs, /const nextOpen = !\(deferredPanelOpen && drawerView === 'todos'\)/);
   assert.match(appJs, /toggle-saved-search/);
@@ -613,10 +621,25 @@ test('theme state uses separate mode and palette preferences', () => {
   assert.match(appJs, /themeModeDark/);
 });
 
-test('quick shortcuts overwrite the current Tab Harbor tab instead of focusing another tab or opening a new one', () => {
+test('quick shortcut left clicks overwrite the current Tab Harbor tab', () => {
   assert.match(runtimeJs, /async function navigateCurrentTabToUrl\(url\)\s*\{[\s\S]*chrome\.tabs\.getCurrent\(\)[\s\S]*chrome\.tabs\.update\(currentTab\.id,\s*\{\s*url,\s*active:\s*true\s*\}\)[\s\S]*chrome\.tabs\.query\(\{\s*active:\s*true,\s*currentWindow:\s*true,\s*\}\)[\s\S]*chrome\.tabs\.update\(activeTab\.id,\s*\{\s*url,\s*active:\s*true\s*\}\)/);
   assert.match(runtimeJs, /async function openOrFocusUrl\(url\)\s*\{\s*if \(!url\) return false;\s*await navigateCurrentTabToUrl\(url\);\s*return true;\s*\}/);
   assert.match(runtimeJs, /const fallbackUrl = `https:\/\/www\.google\.com\/search\?q=\$\{encodeURIComponent\(text\)\}`;\s*await navigateCurrentTabToUrl\(fallbackUrl\);/);
+});
+
+test('quick shortcut middle clicks open the URL in a background tab', () => {
+  assert.match(runtimeJs, /async function openUrlInBackgroundTab\(url\)\s*\{\s*if \(!url\) return false;\s*await chrome\.tabs\.create\(\{\s*url,\s*active:\s*false\s*\}\);\s*return true;\s*\}/);
+  assert.match(runtimeJs, /globalThis\.TabHarborDashboardRuntime = \{[\s\S]*openUrlInBackgroundTab,[\s\S]*\};/);
+  assert.match(themeJs, /let quickShortcutMiddleClickSuppressUntil = 0;/);
+  assert.match(themeJs, /async function handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\)\s*\{[\s\S]*quickShortcutSuppressClickUntil[\s\S]*quickShortcutMiddleClickSuppressUntil[\s\S]*runtime\.openUrlInBackgroundTab\(url\);[\s\S]*\}/);
+  assert.match(themeJs, /document\.addEventListener\('auxclick',\s*async \(e\) => \{[\s\S]*e\.button !== 1[\s\S]*handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\);[\s\S]*\}\);/);
+  assert.match(themeJs, /document\.addEventListener\('pointerdown',\s*\(e\) => \{[\s\S]*if \(e\.button === 1\) \{[\s\S]*handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\);[\s\S]*return;[\s\S]*\}[\s\S]*if \(e\.button !== 0\) return;/);
+});
+
+test('duplicate Tab Harbor banner appears only for three or more Tab Harbor tabs', () => {
+  assert.match(runtimeJs, /if \(tabOutTabs\.length >= 3\) \{[\s\S]*countEl\.textContent = tabOutTabs\.length;[\s\S]*banner\.style\.display = 'flex';/);
+  assert.doesNotMatch(runtimeJs, /if \(tabOutTabs\.length > 1\) \{/);
+  assert.match(html, /TAB HARBOR DUPES BANNER — appears when 3\+ Tab Harbor tabs are open/);
 });
 
 test('keyboard focus receives explicit visible treatment', () => {
