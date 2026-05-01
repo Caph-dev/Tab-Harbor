@@ -28,6 +28,11 @@ This fork keeps the original Tab Harbor idea, but this README only records the c
 - Let todo text wrap to two lines instead of forcing single-line truncation.
 - Updated the duplicate Tab Harbor banner copy so it appears only when there are 3 or more Tab Harbor tabs open.
 - Added missing i18n hooks for saved-for-later and todo empty states.
+- Moved the desk settings and pinned-order controls out of the top group navigation row and into quiet floating controls at the bottom-right of the page.
+- Kept the group navigation inside the left open-tabs column so the right rail can move upward into the space freed by those controls.
+- Updated the theme menu to open upward from the bottom-right controls, with a fixed mobile placement so it stays inside the viewport and avoids the drawer triggers.
+- Tuned the right-side search box spacing so its top border visually aligns with the divider line in the left open-tabs section header.
+- Added UI regression coverage for the new group navigation placement, bottom-right floating controls, upward theme menu, and search spacing.
 
 ### Popup experience
 

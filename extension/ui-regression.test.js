@@ -143,6 +143,7 @@ test('index includes deferred drawer trigger and overlay', () => {
   assert.match(html, /class="header-title-row"/);
   assert.match(html, /id="quickTabsSection"/);
   assert.match(html, /id="quickTabsList"/);
+  assert.match(html, /<div class="active-section" id="openTabsSection"[\s\S]*<div class="group-nav group-nav-wide" id="openTabsGroupNav"/);
   assert.doesNotMatch(html, /Quick tabs/);
   assert.doesNotMatch(html, /No custom background/);
   assert.doesNotMatch(html, /deferredTriggerIconPath/);
@@ -290,6 +291,7 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(css, /\.header-theme-trigger\s*\{/);
   assert.match(css, /\.group-nav-tools\s*\{/);
   assert.match(css, /\.header-theme-trigger::after\s*\{/);
+  assert.match(css, /\.header-search\s*\{[\s\S]*margin-top:\s*16px;/);
   assert.match(css, /\.header-search-shell\s*\{/);
   assert.match(css, /\.header-search-shell:focus-within\s*\{/);
   assert.match(css, /\.header-search-input\s*\{/);
@@ -327,6 +329,8 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(css, /\.mission-card\s*\{[\s\S]*background:\s*color-mix\(in srgb, var\(--card-bg\) calc\(var\(--custom-surface-opacity\) \+ 68%\), transparent\);/);
   assert.match(css, /\.section-count\s*\{[\s\S]*color:\s*var\(--workspace-chip-text\);/);
   assert.match(css, /\.group-nav-button\s*\{[\s\S]*width:\s*40px;[\s\S]*height:\s*40px;/);
+  assert.match(css, /\.group-nav-tools\s*\{[\s\S]*position:\s*fixed;[\s\S]*right:\s*24px;[\s\S]*bottom:\s*28px;/);
+  assert.match(css, /\.theme-menu\s*\{[\s\S]*top:\s*auto;[\s\S]*bottom:\s*calc\(100% \+ 10px\);/);
   assert.match(css, /\.group-nav-button::after,\s*\.group-pin-toggle::after\s*\{[\s\S]*background:\s*var\(--tooltip-surface\);[\s\S]*color:\s*var\(--tooltip-text\);[\s\S]*border:\s*1px solid var\(--tooltip-border\);/);
   assert.match(css, /\.tab-cleanup-banner\s*\{[\s\S]*var\(--theme-accent-soft\)[\s\S]*border:\s*1px solid var\(--theme-accent-muted\);/);
   assert.match(css, /\.tab-cleanup-icon svg\s*\{[\s\S]*color:\s*var\(--theme-accent-strong\);/);

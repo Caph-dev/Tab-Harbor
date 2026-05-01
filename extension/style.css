@@ -181,7 +181,7 @@ body.theme-tone-dark::before {
 }
 
 .header-search {
-  margin-top: 14px;
+  margin-top: 16px;
   width: 100%;
   align-self: stretch;
 }
@@ -545,13 +545,17 @@ body.quick-shortcut-list-dragging .quick-shortcut-open {
 }
 
 .header-theme-trigger {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   border: none;
   background: transparent;
   color: color-mix(in srgb, var(--ink) 78%, var(--muted) 22%);
   border-radius: 999px;
-  padding: 4px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
   position: relative;
@@ -603,7 +607,8 @@ body.quick-shortcut-list-dragging .quick-shortcut-open {
 
 .theme-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: auto;
+  bottom: calc(100% + 10px);
   right: 0;
   width: 320px;
   border: 1px solid color-mix(in srgb, var(--workspace-accent-border) calc(var(--custom-border-opacity) + 6%), var(--warm-gray) 32%);
@@ -1200,11 +1205,14 @@ body.theme-tone-dark .deferred-shell {
 }
 
 .group-nav-tools {
-  position: relative;
+  position: fixed;
+  right: 24px;
+  bottom: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
+  z-index: 94;
 }
 
 .group-nav-placeholder {
@@ -2961,6 +2969,9 @@ body.dashboard-refreshing footer {
     gap: 12px 10px;
   }
   .theme-menu {
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
     width: min(320px, calc(100vw - 32px));
   }
   .deferred-trigger {
@@ -2994,6 +3005,14 @@ body.dashboard-refreshing footer {
     padding: 18px 16px 20px;
   }
   .group-nav {
+    gap: 6px;
+  }
+  .group-nav-wide {
+    margin-bottom: 14px;
+  }
+  .group-nav-tools {
+    right: 66px;
+    bottom: 24px;
     gap: 6px;
   }
   .group-nav-button {
