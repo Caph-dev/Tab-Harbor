@@ -227,6 +227,10 @@ const {
 } = globalThis.TabHarborDrawerSyncStore || {};
 
 const {
+  initQuickShortcutsSync: runtimeInitQuickShortcutsSync,
+} = globalThis.TabHarborQuickShortcutsSyncStore || {};
+
+const {
   compressImageFileForStorage,
 } = globalThis.TabOutBackgroundImage || {};
 
@@ -3124,6 +3128,9 @@ function setupImageErrorHandlers() {
 async function initializeDashboardRuntime() {
   injectDynamicAnimationStyles();
   await loadThemePreferences();
+  if (typeof runtimeInitQuickShortcutsSync === 'function') {
+    await runtimeInitQuickShortcutsSync();
+  }
   if (typeof runtimeInitDrawerSync === 'function') {
     await runtimeInitDrawerSync();
   }
@@ -3191,6 +3198,9 @@ function setupTabChangeListener() {
 
 if (typeof globalThis.addEventListener === 'function') {
   globalThis.addEventListener('tabharbor-drawer-sync-error', () => {
+    showToast(runtimeT ? runtimeT('toastSyncSaveFailed') : 'Saved locally. Chrome Sync could not update.');
+  });
+  globalThis.addEventListener('tabharbor-quick-shortcuts-sync-error', () => {
     showToast(runtimeT ? runtimeT('toastSyncSaveFailed') : 'Saved locally. Chrome Sync could not update.');
   });
 }

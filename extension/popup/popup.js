@@ -55,6 +55,7 @@ globalThis._popupIcons = popupIcons;
 
 const POPUP_REFRESH_KEYS = new Set([
   'quickShortcuts',
+  'tabHarbor.shortcut.order',
   'sessionGroups',
   'groupOrder',
   'groupTabOrder',
@@ -817,7 +818,9 @@ async function refreshPopupSafely() {
 
 function handlePopupStorageChanged(changes, areaName) {
   if (areaName !== 'local') return;
-  const hasRelevantChange = Object.keys(changes || {}).some(key => POPUP_REFRESH_KEYS.has(key));
+  const hasRelevantChange = Object.keys(changes || {}).some(key =>
+    POPUP_REFRESH_KEYS.has(key) || key.startsWith('tabHarbor.shortcut.')
+  );
   if (!hasRelevantChange) return;
   schedulePopupRefresh();
 }

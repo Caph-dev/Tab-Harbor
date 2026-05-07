@@ -20,6 +20,14 @@ const {
   reorderSubsetByIds: themeReorderSubsetByIds,
 } = globalThis.TabOutListOrder || {};
 
+const {
+  initQuickShortcutsSync: themeInitQuickShortcutsSync,
+  getQuickShortcuts: themeStoreGetQuickShortcuts,
+  saveQuickShortcuts: themeStoreSaveQuickShortcuts,
+  removeQuickShortcutById: themeStoreRemoveQuickShortcutById,
+  reorderQuickShortcuts: themeStoreReorderQuickShortcuts,
+} = globalThis.TabHarborQuickShortcutsSyncStore || {};
+
 let themeMenuOpen = false;
 let shortcutEditorState = {
   open: false,
@@ -306,13 +314,16 @@ function normalizeQuickShortcuts(input) {
     .filter(item => item && item.url)
     .map(item => {
       const normalizedIcon = normalizeShortcutIcon(item.icon || item.customIcon || '');
+      const explicitIconKind = ['site', 'glyph', 'image', 'svg'].includes(String(item.iconKind || ''))
+        ? String(item.iconKind)
+        : '';
       const iconMask = String(item.iconMask || '') === 'rounded' ? 'rounded' : 'none';
       return {
         id: String(item.id || `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
         url: String(item.url).trim(),
         label: String(item.label || '').trim(),
         icon: normalizedIcon.value,
-        iconKind: normalizedIcon.kind,
+        iconKind: normalizedIcon.kind || explicitIconKind,
         iconMask,
       };
     })
@@ -644,23 +655,39 @@ function renderThemeMenu() {
 }
 
 async function getQuickShortcuts() {
+  if (typeof themeStoreGetQuickShortcuts === 'function') {
+    if (typeof themeInitQuickShortcutsSync === 'function') await themeInitQuickShortcutsSync();
+    return normalizeQuickShortcuts(await themeStoreGetQuickShortcuts());
+  }
   const stored = await chrome.storage.local.get(QUICK_SHORTCUTS_KEY);
   return normalizeQuickShortcuts(stored[QUICK_SHORTCUTS_KEY]);
 }
 
 async function saveQuickShortcuts(shortcuts) {
   const normalized = normalizeQuickShortcuts(shortcuts);
+  if (typeof themeStoreSaveQuickShortcuts === 'function') {
+    if (typeof themeInitQuickShortcutsSync === 'function') await themeInitQuickShortcutsSync();
+    return normalizeQuickShortcuts(await themeStoreSaveQuickShortcuts(normalized));
+  }
   await chrome.storage.local.set({ [QUICK_SHORTCUTS_KEY]: normalized });
   return normalized;
 }
 
 async function removeQuickShortcutById(shortcutId) {
+  if (typeof themeStoreRemoveQuickShortcutById === 'function') {
+    if (typeof themeInitQuickShortcutsSync === 'function') await themeInitQuickShortcutsSync();
+    return normalizeQuickShortcuts(await themeStoreRemoveQuickShortcutById(shortcutId));
+  }
   if (!shortcutId) return await getQuickShortcuts();
   const shortcuts = await getQuickShortcuts();
   return await saveQuickShortcuts(shortcuts.filter(item => item.id !== shortcutId));
 }
 
 async function saveQuickShortcutOrder(orderIds) {
+  if (typeof themeStoreReorderQuickShortcuts === 'function') {
+    if (typeof themeInitQuickShortcutsSync === 'function') await themeInitQuickShortcutsSync();
+    return normalizeQuickShortcuts(await themeStoreReorderQuickShortcuts(orderIds));
+  }
   const shortcuts = await getQuickShortcuts();
   if (!Array.isArray(orderIds) || !orderIds.length || !themeReorderSubsetByIds) {
     return shortcuts;
@@ -2536,9 +2563,18 @@ document.addEventListener('click', (e) => {
   }
 });
 
+if (typeof globalThis.addEventListener === 'function') {
+  globalThis.addEventListener('tabharbor-quick-shortcuts-sync-updated', () => {
+    void renderQuickShortcuts();
+  });
+}
+
 async function loadThemePreferences() {
   const stored = await chrome.storage.local.get(THEME_PREFERENCES_KEY);
   themePreferences = normalizeThemePreferences(stored[THEME_PREFERENCES_KEY]);
+  if (typeof themeInitQuickShortcutsSync === 'function') {
+    await themeInitQuickShortcutsSync();
+  }
   syncSystemThemeSubscription();
   applyThemePreferences();
   renderThemeMenu();

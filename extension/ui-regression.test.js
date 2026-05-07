@@ -11,12 +11,13 @@ const runtimeJs = fs.readFileSync(path.join(__dirname, 'dashboard-runtime.js'), 
 const themeJs = fs.readFileSync(path.join(__dirname, 'theme-controls.js'), 'utf8');
 const drawerJs = fs.readFileSync(path.join(__dirname, 'drawer-manager.js'), 'utf8');
 const drawerSyncJs = fs.readFileSync(path.join(__dirname, 'drawer-sync-store.js'), 'utf8');
+const quickShortcutsSyncJs = fs.readFileSync(path.join(__dirname, 'quick-shortcuts-sync-store.js'), 'utf8');
 const helperJs = fs.readFileSync(path.join(__dirname, 'ui-helpers.js'), 'utf8');
 const popupJs = fs.readFileSync(path.join(__dirname, 'popup', 'popup.js'), 'utf8');
 const popupHtml = fs.readFileSync(path.join(__dirname, 'popup', 'popup.html'), 'utf8');
 const configJs = fs.readFileSync(path.join(__dirname, 'config.js'), 'utf8');
 const configLoaderJs = fs.readFileSync(path.join(__dirname, 'config-loader.js'), 'utf8');
-const appJs = [appEntryJs, runtimeJs, themeJs, drawerJs, drawerSyncJs, helperJs].join('\n');
+const appJs = [appEntryJs, runtimeJs, themeJs, drawerJs, drawerSyncJs, quickShortcutsSyncJs, helperJs].join('\n');
 
 test('move menu keeps hidden state until explicitly opened', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
@@ -153,11 +154,23 @@ test('index includes deferred drawer trigger and overlay', () => {
 });
 
 test('drawer sync store is loaded before drawer manager and runtime startup', () => {
-  assert.match(html, /<script src="todos-store\.js"><\/script>\s*<script src="list-order\.js"><\/script>\s*<script src="drawer-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>[\s\S]*<script src="drawer-manager\.js"><\/script>/);
+  assert.match(html, /<script src="todos-store\.js"><\/script>\s*<script src="list-order\.js"><\/script>\s*<script src="drawer-sync-store\.js"><\/script>\s*<script src="quick-shortcuts-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>[\s\S]*<script src="drawer-manager\.js"><\/script>/);
   assert.match(drawerSyncJs, /chrome\?\.storage\?\.\[areaName\]/);
   assert.match(drawerSyncJs, /tabHarbor\.saved\.item\./);
   assert.match(drawerSyncJs, /tabHarbor\.todo\.item\./);
   assert.match(runtimeJs, /await runtimeInitDrawerSync\(\)/);
+});
+
+test('quick shortcuts sync store is loaded before theme controls and popup shortcuts', () => {
+  assert.match(html, /<script src="quick-shortcuts-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>\s*<script src="i18n\.js"><\/script>\s*<script src="ui-helpers\.js"><\/script>\s*<script src="theme-controls\.js"><\/script>/);
+  assert.match(popupHtml, /<script src="\.\.\/list-order\.js"><\/script>\s*<script src="\.\.\/quick-shortcuts-sync-store\.js"><\/script>\s*<script src="\.\.\/background-image\.js"><\/script>[\s\S]*<script src="\.\.\/theme-controls\.js"><\/script>/);
+  assert.match(quickShortcutsSyncJs, /tabHarbor\.shortcut\.item\./);
+  assert.match(quickShortcutsSyncJs, /tabHarbor\.shortcut\.order/);
+  assert.match(quickShortcutsSyncJs, /LIGHTWEIGHT_ICON_MAX_CHARS/);
+  assert.match(themeJs, /initQuickShortcutsSync: themeInitQuickShortcutsSync/);
+  assert.match(themeJs, /tabharbor-quick-shortcuts-sync-updated/);
+  assert.match(runtimeJs, /tabharbor-quick-shortcuts-sync-error/);
+  assert.match(popupJs, /key\.startsWith\('tabHarbor\.shortcut\.'\)/);
 });
 
 test('optional local config is loaded safely before app mount', () => {
