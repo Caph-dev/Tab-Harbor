@@ -55,3 +55,17 @@ This file captures project-level design and implementation constraints for agent
 Detailed rationale and lessons learned live in:
 - `docs/design-principles-and-lessons.md`
 - `.impeccable.md`
+
+## Agent skills
+
+### Issue tracker
+
+本仓库的 issues 和 PRDs 使用 GitHub Issues 跟踪，仓库为 `Walaxy/tab-harbor`。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用 mattpocock/skills 的默认 triage 标签词汇。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+本仓库使用 single-context 领域文档布局。详见 `docs/agents/domain.md`。
