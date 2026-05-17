@@ -10,6 +10,8 @@ This fork keeps the original Tab Harbor idea, but this README only records the c
 
 - Added cross-device sync through `chrome.storage.sync`, with no custom server.
 - Sync requires both devices to use the same Google Chrome account, Chrome Sync to be enabled, and Extensions or related extension data to be allowed in Chrome Sync settings.
+- Both devices must install Tab Harbor with the same extension ID. `chrome.storage.sync` data is isolated by extension ID, so different IDs do not share the same synced data.
+- Chrome Sync itself is not isolated by extension version, but keeping both devices on the same extension version is recommended so older code does not misread newer sync fields, delete tombstones, or order data.
 - Saved-for-later items sync URL, title, completed / archived / deleted state, and order.
 - Todos sync title, description, completed / archived / deleted state, and order.
 - Quick shortcuts under the search bar sync URL, label, order, icon type, icon mask, and lightweight icons.
