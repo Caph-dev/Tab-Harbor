@@ -267,7 +267,7 @@ let chromeTabGroupsEnabled = false;
 let dashboardHasRenderedOnce = false;
 let hitokotoRequestToken = 0;
 let hitokotoActiveFetchToken = 0;
-let hitokotoDataCache = null;
+let hitokotoDataCache = new Map();
 let hitokotoFetchInFlight = false;
 let drawerSearchRenderFrame = 0;
 let importedChromeGroupMeta = normalizeChromeImportedGroupMeta
@@ -423,15 +423,48 @@ function getChromeSyncGroups(groups = domainGroups) {
    Hitokoto helper
    ---------------------------------------------------------------- */
 
-async function fetchHitokoto(timeoutMs = 3000) {
+function getHitokotoLocale() {
+  return globalThis.TabHarborI18n?.locale === 'zh-CN' ? 'zh-CN' : 'en';
+}
+
+function getHitokotoEndpoint(locale) {
+  return locale === 'zh-CN'
+    ? 'https://v1.hitokoto.cn/'
+    : 'https://dummyjson.com/quotes/random';
+}
+
+function normalizeHitokotoData(data, locale) {
+  if (!data || typeof data !== 'object') return null;
+
+  if (locale === 'zh-CN') {
+    const text = String(data.hitokoto || '').trim();
+    if (!text) return null;
+    return {
+      hitokoto: text,
+      from_who: data.from_who || '',
+      from: data.from || '',
+    };
+  }
+
+  const quote = data.quote && typeof data.quote === 'object' ? data.quote : data;
+  const text = String(quote.body || quote.quote || quote.q || '').trim();
+  if (!text) return null;
+  return {
+    hitokoto: text,
+    from_who: '',
+    from: quote.author || quote.a || '',
+  };
+}
+
+async function fetchHitokoto(locale = getHitokotoLocale(), timeoutMs = 3000) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    const response = await fetch('https://v1.hitokoto.cn/', { signal: controller.signal });
+    const response = await fetch(getHitokotoEndpoint(locale), { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!response || !response.ok) return null;
     const data = await response.json();
-    return data || null;
+    return normalizeHitokotoData(data, locale);
   } catch (err) {
     return null;
   }
@@ -460,6 +493,7 @@ function applyHitokotoData(data) {
 
 function refreshHitokotoAfterPaint() {
   const hitokotoEnabled = typeof themePreferences !== 'undefined' ? themePreferences.hitokotoEnabled : true;
+  const locale = getHitokotoLocale();
 
   if (!hitokotoEnabled) {
     hitokotoRequestToken++;
@@ -468,8 +502,9 @@ function refreshHitokotoAfterPaint() {
     return;
   }
 
-  if (hitokotoDataCache) {
-    applyHitokotoData(hitokotoDataCache);
+  const cachedData = hitokotoDataCache.get(locale);
+  if (cachedData) {
+    applyHitokotoData(cachedData);
     return;
   }
 
@@ -483,10 +518,10 @@ function refreshHitokotoAfterPaint() {
     : callback => setTimeout(callback, 0);
 
   schedule(() => {
-    fetchHitokoto()
+    fetchHitokoto(locale)
       .then(data => {
         if (!data || token !== hitokotoRequestToken) return;
-        hitokotoDataCache = data;
+        hitokotoDataCache.set(locale, data);
         applyHitokotoData(data);
       })
       .catch(() => {

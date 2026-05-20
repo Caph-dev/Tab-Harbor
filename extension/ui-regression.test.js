@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const appEntryJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 const backgroundJs = fs.readFileSync(path.join(__dirname, 'background.js'), 'utf8');
@@ -774,6 +775,49 @@ test('optional quote loading does not block the main dashboard render', () => {
     runtimeJs,
     /async function renderStaticDashboard[\s\S]*await fetchHitokoto\(\)/
   );
+});
+
+test('date display reads the current app locale at render time', () => {
+  let locale = 'zh-CN';
+  const context = {
+    globalThis: {
+      TabHarborI18n: {
+        get locale() {
+          return locale;
+        },
+        t: key => key,
+      },
+    },
+    Date: class extends Date {
+      constructor(...args) {
+        super(...(args.length ? args : ['2026-05-17T08:00:00Z']));
+      }
+    },
+    document: { addEventListener: () => {} },
+    HTMLImageElement: class HTMLImageElement {},
+    window: {},
+    URL,
+    setTimeout,
+  };
+  context.globalThis.globalThis = context.globalThis;
+  vm.runInNewContext(`${helperJs}\nglobalThis.__getDateDisplay = getDateDisplay;`, context);
+
+  assert.equal(context.globalThis.__getDateDisplay(), '2026年5月17日星期日');
+  locale = 'en';
+  assert.equal(context.globalThis.__getDateDisplay(), 'Sunday, May 17, 2026');
+});
+
+test('quote source follows locale and keeps per-locale cache entries', () => {
+  assert.match(runtimeJs, /function getHitokotoLocale\(\)/);
+  assert.match(runtimeJs, /function getHitokotoEndpoint\(locale\)/);
+  assert.match(runtimeJs, /https:\/\/v1\.hitokoto\.cn\//);
+  assert.match(runtimeJs, /https:\/\/dummyjson\.com\/quotes\/random/);
+  assert.doesNotMatch(runtimeJs, /https:\/\/favqs\.com\/api\/qotd/);
+  assert.match(runtimeJs, /function normalizeHitokotoData\(data, locale\)/);
+  assert.match(runtimeJs, /hitokotoDataCache = new Map/);
+  assert.match(runtimeJs, /hitokotoDataCache\.get\(locale\)/);
+  assert.match(runtimeJs, /hitokotoDataCache\.set\(locale, data\)/);
+  assert.match(runtimeJs, /fetchHitokoto\(locale\)/);
 });
 
 test('automatic refresh paths skip repeat entrance animations and heavy group sync', () => {

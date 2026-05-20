@@ -1,9 +1,12 @@
 'use strict';
 
 const {
-  locale: uiLocale = 'en',
   t: uiT,
 } = globalThis.TabHarborI18n || {};
+
+function getCurrentUiLocale() {
+  return globalThis.TabHarborI18n?.locale === 'zh-CN' ? 'zh-CN' : 'en';
+}
 
 /* ----------------------------------------------------------------
    UI HELPERS
@@ -263,7 +266,7 @@ function getGreeting() {
 }
 
 function getDateDisplay() {
-  const locale = uiLocale === 'zh-CN' ? 'zh-CN' : 'en-US';
+  const locale = getCurrentUiLocale() === 'zh-CN' ? 'zh-CN' : 'en-US';
   return new Date().toLocaleDateString(locale, {
     weekday: 'long',
     year: 'numeric',
