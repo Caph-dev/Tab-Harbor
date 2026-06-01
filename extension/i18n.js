@@ -154,6 +154,12 @@
       ungroupedLabel: 'Ungrouped',
       closeTabButton: 'Close',
       popupRefreshLabel: 'Refresh popup content',
+      toastAlreadyInShortcuts: 'Already in shortcuts',
+      toastTabAddedUndo: 'Tab added — undo?',
+      undo: 'Undo',
+      toastTabsAdded: '{count} tab{suffix} added',
+      toastBackgroundUpdated: 'Background updated',
+      toastCouldNotLoadBackground: 'Could not load background',
     },
     'zh-CN': {
       emptyTitle: '标签页清零了。',
@@ -283,6 +289,12 @@
       ungroupedLabel: '未分组',
       closeTabButton: '关闭',
       popupRefreshLabel: '刷新弹窗内容',
+      toastAlreadyInShortcuts: '已在快捷方式中',
+      toastTabAddedUndo: '已添加标签 — 撤销？',
+      undo: '撤销',
+      toastTabsAdded: '已添加 {count} 个标签页',
+      toastBackgroundUpdated: '背景已更新',
+      toastCouldNotLoadBackground: '无法加载背景',
     },
   };
 
@@ -362,7 +374,6 @@
     'Drag to reorder todo': '拖拽重排待办',
     'Open again': '再次打开',
     'Delete archived todo': '删除已归档待办',
-    'Archive': '归档',
     'Add link': '添加链接',
     'Add quick tab': '添加快捷链接',
     'Edit quick tab': '编辑快捷链接',
@@ -408,7 +419,8 @@
       .replace(/^(\d+) tabs? open$/i, (_, count) => i18nT('tabsOpenBadge', { count }))
       .replace(/^(\d+) duplicate(?:s)?$/i, (_, count) => i18nT('duplicatesCount', { count }))
       .replace(/^Close (\d+) duplicate(?:s)?$/i, (_, count) => i18nT('closedDuplicatesCount', { count }))
-      .replace(/^Created (.+)$/i, (_, rest) => `创建于 ${rest}`);
+      .replace(/^Created (\d{4}-\d{2}-\d{2}.*)$/i, (_, rest) => `创建于 ${rest}`)
+      .replace(/^Created (just now|\d+ (?:min|hr|day)s? ago|yesterday)$/i, (_, rest) => `创建于 ${rest}`);
 
     if (translated !== core) {
       return `${leading}${translated}${trailing}`;
@@ -424,16 +436,28 @@
       el.textContent = i18nT(el.dataset.i18n);
     }
     if (el.dataset.i18nPlaceholder) {
-      el.setAttribute('placeholder', i18nT(el.dataset.i18nPlaceholder));
+      const newVal = i18nT(el.dataset.i18nPlaceholder);
+      if (el.getAttribute('placeholder') !== newVal) {
+        el.setAttribute('placeholder', newVal);
+      }
     }
     if (el.dataset.i18nAriaLabel) {
-      el.setAttribute('aria-label', i18nT(el.dataset.i18nAriaLabel));
+      const newVal = i18nT(el.dataset.i18nAriaLabel);
+      if (el.getAttribute('aria-label') !== newVal) {
+        el.setAttribute('aria-label', newVal);
+      }
     }
     if (el.dataset.i18nTitle) {
-      el.setAttribute('title', i18nT(el.dataset.i18nTitle));
+      const newVal = i18nT(el.dataset.i18nTitle);
+      if (el.getAttribute('title') !== newVal) {
+        el.setAttribute('title', newVal);
+      }
     }
     if (el.dataset.i18nTooltip) {
-      el.setAttribute('data-tooltip', i18nT(el.dataset.i18nTooltip));
+      const newVal = i18nT(el.dataset.i18nTooltip);
+      if (el.getAttribute('data-tooltip') !== newVal) {
+        el.setAttribute('data-tooltip', newVal);
+      }
     }
 
     const attrNames = ['aria-label', 'title', 'placeholder', 'data-tooltip'];
@@ -471,7 +495,7 @@
   function i18nApplyDomTranslations(rootNode = document) {
     const root = rootNode && rootNode.querySelectorAll ? rootNode : document;
     const candidates = root.querySelectorAll
-      ? root.querySelectorAll('[data-i18n],[data-i18n-placeholder],[data-i18n-aria-label],[data-i18n-title],[data-i18n-tooltip], [aria-label], [title], [placeholder], [data-tooltip]')
+      ? root.querySelectorAll('[data-i18n],[data-i18n-placeholder],[data-i18n-aria-label],[data-i18n-title],[data-i18n-tooltip]')
       : [];
 
     candidates.forEach(i18nApplyToElement);
@@ -504,6 +528,7 @@
   }
 
   async function setLanguagePreference(preference, { persist = true, reload = false } = {}) {
+    const previousLocale = i18nLocale;
     i18nLanguagePreference = normalizeLanguagePreference(preference);
     i18nLocale = resolveLocaleByPreference(i18nLanguagePreference);
 
@@ -513,7 +538,8 @@
       });
     }
 
-    if (reload) {
+    // Switching away from zh-CN requires reload — translated text can't be reversed reliably
+    if (reload || (previousLocale === 'zh-CN' && i18nLocale !== 'zh-CN')) {
       globalScope.location?.reload?.();
       return i18nLanguagePreference;
     }

@@ -8,9 +8,12 @@
   const BACKGROUND_IMAGE_EDGE_STEPS = [1, 0.88, 0.76, 0.64];
 
   function constrainImageDimensions({ width, height, maxEdge = MAX_BACKGROUND_EDGE }) {
-    const safeWidth = Math.max(1, Math.round(Number(width) || 0));
-    const safeHeight = Math.max(1, Math.round(Number(height) || 0));
-    const safeMaxEdge = Math.max(1, Math.round(Number(maxEdge) || MAX_BACKGROUND_EDGE));
+    const rawWidth = Number(width);
+    const rawHeight = Number(height);
+    const rawMaxEdge = Number(maxEdge);
+    const safeWidth = Math.max(1, Math.round(Number.isFinite(rawWidth) ? rawWidth : 0));
+    const safeHeight = Math.max(1, Math.round(Number.isFinite(rawHeight) ? rawHeight : 0));
+    const safeMaxEdge = Math.max(1, Math.round(Number.isFinite(rawMaxEdge) ? rawMaxEdge : MAX_BACKGROUND_EDGE));
     const largestEdge = Math.max(safeWidth, safeHeight);
 
     if (largestEdge <= safeMaxEdge) {
@@ -86,6 +89,9 @@
 
       for (const quality of BACKGROUND_IMAGE_QUALITIES) {
         const dataUrl = canvas.toDataURL(BACKGROUND_IMAGE_TYPE, quality);
+        if (!dataUrl.startsWith('data:image/') || !dataUrl.includes('base64,')) {
+          throw new Error('canvas.toDataURL produced invalid output');
+        }
         const bytes = estimateDataUrlBytes(dataUrl);
         if (bytes < bestBytes) {
           bestBytes = bytes;

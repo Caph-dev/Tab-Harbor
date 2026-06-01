@@ -356,7 +356,7 @@ async function dismissSavedTab(id) {
 }
 
 async function restoreSavedTab(id) {
-  const { deferred = [] } = await chrome.storage.local.get('deferred');
+  const deferred = await getSavedTabs();
   const tab = deferred.find(t => t.id === id && !t.completed && !t.dismissed);
   if (tab) {
     if (typeof drawerStoreUpdateSavedTab === 'function') {
@@ -506,7 +506,7 @@ function renderTodoArchiveItem(todo) {
   return `
     <div class="archive-item">
       <div class="archive-item-main">
-        <div class="archive-item-title">${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : todo.title}</div>
+        <div class="archive-item-title">${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>
         <span class="archive-item-date">${ago}</span>
       </div>
       <button class="archive-item-delete" type="button" data-action="delete-todo-archive" data-todo-id="${todo.id}" aria-label="Delete archived todo" title="Delete archived todo">
@@ -526,7 +526,7 @@ function renderTodoListItem(todo, { dragEnabled = true } = {}) {
     <div class="todo-item" data-todo-id="${todo.id}" data-drawer-sort-id="${todo.id}" data-drawer-sort-kind="todo">
       <input type="checkbox" class="todo-checkbox" data-action="complete-todo" data-todo-id="${todo.id}">
       <button class="todo-main" type="button" data-action="open-todo-detail" data-todo-id="${todo.id}">
-        <span class="todo-title">${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : todo.title}</span>
+        <span class="todo-title">${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</span>
         <span class="todo-meta">${ago}</span>
       </button>
       <div class="todo-actions">
@@ -543,8 +543,8 @@ function renderTodoDetail(todo) {
         Back to list
       </button>
       <div class="todo-detail-card">
-        <h3>${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : todo.title}</h3>
-        <p>${drawerEscapeHtml ? drawerEscapeHtml(todo.description || 'Add a note when this task needs more context.') : (todo.description || 'Add a note when this task needs more context.')}</p>
+        <h3>${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</h3>
+        <p>${drawerEscapeHtml ? drawerEscapeHtml(todo.description || 'Add a note when this task needs more context.') : String(todo.description || 'Add a note when this task needs more context.').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</p>
         <div class="todo-detail-meta">Created ${timeAgo(todo.createdAt)}</div>
       </div>
     </div>`;
@@ -699,7 +699,7 @@ async function renderDeferredColumn({ contentScope = 'all' } = {}) {
       }
 
       if (filteredArchived.length > 0) {
-        archiveCountEl.textContent = `(${archived.length})`;
+        archiveCountEl.textContent = `(${filteredArchived.length})`;
         archiveList.innerHTML = filteredArchived.map(item => renderArchiveItem(item)).join('');
         archiveEl.style.display = 'block';
         if (clearArchiveBtn) clearArchiveBtn.style.display = 'inline-flex';
@@ -761,9 +761,9 @@ function renderDeferredItem(item) {
     <div class="deferred-item" data-deferred-id="${item.id}" data-drawer-sort-id="${item.id}" data-drawer-sort-kind="saved">
       <input type="checkbox" class="deferred-checkbox" data-action="check-deferred" data-deferred-id="${item.id}">
       <div class="deferred-info">
-        <a href="${item.url}" target="_blank" rel="noopener" class="deferred-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
+        <a href="${String(item.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" target="_blank" rel="noopener" class="deferred-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
           ${faviconUrl ? `<img src="${faviconUrl}" alt="" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px" data-fallback-src="${safeFallbackUrl}">` : ''}
-          <span class="inline-favicon-fallback"${faviconUrl ? ' style="display:none"' : ''}>${fallbackLabel}</span>${drawerEscapeHtml ? drawerEscapeHtml(item.title || item.url) : (item.title || item.url)}
+          <span class="inline-favicon-fallback"${faviconUrl ? ' style="display:none"' : ''}>${fallbackLabel}</span>${drawerEscapeHtml ? drawerEscapeHtml(item.title || item.url) : String(item.title || item.url).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}
         </a>
         <div class="deferred-meta">
           <span>${domain}</span>
@@ -787,8 +787,8 @@ function renderArchiveItem(item) {
   return `
     <div class="archive-item">
       <div class="archive-item-main">
-        <a href="${item.url}" target="_blank" rel="noopener" class="archive-item-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
-          ${drawerEscapeHtml ? drawerEscapeHtml(item.title || item.url) : (item.title || item.url)}
+        <a href="${String(item.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" target="_blank" rel="noopener" class="archive-item-title" title="${(item.title || '').replace(/"/g, '&quot;')}">
+          ${drawerEscapeHtml ? drawerEscapeHtml(item.title || item.url) : String(item.title || item.url).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}
         </a>
         <span class="archive-item-date">${ago}</span>
       </div>

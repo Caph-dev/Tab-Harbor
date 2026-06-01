@@ -110,5 +110,4 @@
   }
 
   globalScope.TabOutSessionGroups = api;
-  globalScope.TabOutEmptySessionGroups = EMPTY_STATE;
 })(typeof globalThis !== 'undefined' ? globalThis : window);

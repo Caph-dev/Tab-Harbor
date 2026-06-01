@@ -12,9 +12,18 @@ function getCurrentUiLocale() {
    UI HELPERS
    ---------------------------------------------------------------- */
 
+let cachedAudioContext = null;
+
+function getAudioContext() {
+  if (!cachedAudioContext || cachedAudioContext.state === 'closed') {
+    cachedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return cachedAudioContext;
+}
+
 function playCloseSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioContext();
     const t = ctx.currentTime;
 
     const duration = 0.25;
@@ -42,11 +51,42 @@ function playCloseSound() {
 
     source.connect(filter).connect(gain).connect(ctx.destination);
     source.start(t);
-
-    setTimeout(() => ctx.close(), 500);
   } catch {
     // Audio not supported — fail silently
   }
+}
+
+let activeConfetti = [];
+let confettiAnimating = false;
+
+function animateConfetti() {
+  if (activeConfetti.length === 0) {
+    confettiAnimating = false;
+    return;
+  }
+  confettiAnimating = true;
+  const now = performance.now();
+
+  activeConfetti = activeConfetti.filter(p => {
+    const elapsed = (now - p.startTime) / 1000;
+    const progress = elapsed / (p.duration / 1000);
+
+    if (progress >= 1) {
+      p.el.remove();
+      return false;
+    }
+
+    const px = p.vx * elapsed;
+    const py = p.vy * elapsed + 0.5 * p.gravity * elapsed * elapsed;
+    const opacity = progress < 0.5 ? 1 : 1 - (progress - 0.5) * 2;
+    const rotate = elapsed * 200 * (p.isCircle ? 0 : 1);
+
+    p.el.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px)) rotate(${rotate}deg)`;
+    p.el.style.opacity = opacity;
+    return true;
+  });
+
+  requestAnimationFrame(animateConfetti);
 }
 
 function shootConfetti(x, y) {
@@ -87,34 +127,21 @@ function shootConfetti(x, y) {
 
     const angle = Math.random() * Math.PI * 2;
     const speed = 60 + Math.random() * 120;
-    const vx = Math.cos(angle) * speed;
-    const vy = Math.sin(angle) * speed - 80;
-    const gravity = 200;
 
-    const startTime = performance.now();
-    const duration = 700 + Math.random() * 200;
+    activeConfetti.push({
+      el,
+      isCircle,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 80,
+      gravity: 200,
+      startTime: performance.now(),
+      duration: 700 + Math.random() * 200,
+    });
+  }
 
-    function frame(now) {
-      const elapsed = (now - startTime) / 1000;
-      const progress = elapsed / (duration / 1000);
-
-      if (progress >= 1) {
-        el.remove();
-        return;
-      }
-
-      const px = vx * elapsed;
-      const py = vy * elapsed + 0.5 * gravity * elapsed * elapsed;
-      const opacity = progress < 0.5 ? 1 : 1 - (progress - 0.5) * 2;
-      const rotate = elapsed * 200 * (isCircle ? 0 : 1);
-
-      el.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px)) rotate(${rotate}deg)`;
-      el.style.opacity = opacity;
-
-      requestAnimationFrame(frame);
-    }
-
-    requestAnimationFrame(frame);
+  if (!confettiAnimating) {
+    confettiAnimating = true;
+    requestAnimationFrame(animateConfetti);
   }
 }
 
@@ -131,10 +158,17 @@ function animateCardOut(card) {
   }, 300);
 }
 
+let toastHideTimeout = null;
+
 function showToast(message, { action } = {}) {
   const toast = document.getElementById('toast');
   const toastText = document.getElementById('toastText');
   const toastAction = document.getElementById('toastAction');
+
+  if (toastHideTimeout) {
+    clearTimeout(toastHideTimeout);
+    toastHideTimeout = null;
+  }
 
   if (toastText) toastText.textContent = message;
 
@@ -156,7 +190,10 @@ function showToast(message, { action } = {}) {
   }
 
   toast?.classList?.add('visible');
-  setTimeout(() => toast?.classList?.remove('visible'), 2500);
+  toastHideTimeout = setTimeout(() => {
+    toast?.classList?.remove('visible');
+    toastHideTimeout = null;
+  }, 2500);
 }
 
 function setImageFallbackAttributes(imgEl, fallbackUrl = '') {
@@ -187,6 +224,8 @@ function revealImageFallback(imgEl) {
     ) ? 'inline-flex' : 'flex';
   }
 }
+
+globalThis.setImageFallbackAttributes = setImageFallbackAttributes;
 
 function handleImageFallbackError(imgEl) {
   if (!imgEl) return;

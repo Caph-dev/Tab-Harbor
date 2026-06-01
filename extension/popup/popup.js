@@ -352,12 +352,14 @@ function getOrderedUniqueTabsForGroup(group) {
   return reorderGroupTabsByStoredUrls(uniqueTabs, group?.domain);
 }
 
-async function loadPopupState() {
+async function loadPopupState({ skipTabs = false } = {}) {
   if (globalThis._skipLoadPopupState) return;
   const shortcutsGetter = popupTheme.getQuickShortcuts;
   if (typeof shortcutsGetter === 'function') {
     popupState.quickShortcuts = await shortcutsGetter();
   }
+
+  if (skipTabs) return;
 
   const [tabs, tabGroups, sgResult, goResult, groupTabOrderResult] = await Promise.all([
     chrome.tabs.query({}),
@@ -702,7 +704,9 @@ async function openPopupUrl(url) {
 
 async function findTabByUrl(url) {
   try {
-    const tabs = await chrome.tabs.query({ url });
+    // Normalize trailing slashes for matching
+    const normalized = url.replace(/\/+$/, '') || url;
+    const tabs = await chrome.tabs.query({ url: normalized });
     return tabs[0] || null;
   } catch {
     return null;
@@ -735,13 +739,8 @@ async function openPopupTab(tabId, fallbackUrl = '') {
   }
 
   if (currentWindow?.id && targetTab.windowId && targetTab.windowId !== currentWindow.id) {
-    const targetUrl = targetTab.url || fallbackUrl;
-    if (!targetUrl) return;
-    await chrome.tabs.create({
-      windowId: currentWindow.id,
-      url: targetUrl,
-      active: true,
-    });
+    await chrome.windows.update(targetTab.windowId, { focused: true });
+    await chrome.tabs.update(targetTab.id, { active: true });
     window.close();
     return;
   }
@@ -773,9 +772,11 @@ async function refreshPopup() {
   if (popupTheme.loadThemePreferences) {
     await popupTheme.loadThemePreferences();
   }
-  await loadPopupState();
+  await loadPopupState({ skipTabs: popupState.view === 'shortcuts' });
   renderPopupShortcuts();
-  renderPopupTabs();
+  if (popupState.view === 'tabs') {
+    renderPopupTabs();
+  }
   syncPopupView();
   if (popupI18n.applyDomTranslations) {
     popupI18n.applyDomTranslations(document.querySelector('.popup-app'));
@@ -859,8 +860,16 @@ function initializePopup() {
 
     const action = actionEl.dataset.action;
     if (action === 'switch-popup-view') {
-      popupState.view = actionEl.dataset.view === 'tabs' ? 'tabs' : 'shortcuts';
-      syncPopupView();
+      const newView = actionEl.dataset.view === 'tabs' ? 'tabs' : 'shortcuts';
+      if (newView === 'tabs' && popupState.view !== 'tabs') {
+        popupState.view = 'tabs';
+        await loadPopupState();
+        renderPopupTabs();
+        syncPopupView();
+      } else {
+        popupState.view = newView;
+        syncPopupView();
+      }
       return;
     }
 

@@ -96,7 +96,9 @@ chrome.tabs.onRemoved.addListener(() => {
 });
 
 // Update badge and notify Tab Harbor pages when a tab's URL changes (e.g. navigating to/from chrome://)
-chrome.tabs.onUpdated.addListener(() => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // Only notify on status or URL changes, not title/favicon updates
+  if (!changeInfo.status && !changeInfo.url) return;
   updateBadge();
   notifyTabHarborPages();
 });

@@ -30,6 +30,28 @@ test('constrainImageDimensions scales portrait images down to the max edge', () 
   );
 });
 
+test('constrainImageDimensions handles Infinity and NaN inputs gracefully', () => {
+  // Infinity is not finite, so it falls back to 0, then clamped to 1
+  assert.deepEqual(
+    constrainImageDimensions({ width: Infinity, height: 800 }),
+    { width: 1, height: 800 }
+  );
+  assert.deepEqual(
+    constrainImageDimensions({ width: 800, height: Infinity }),
+    { width: 800, height: 1 }
+  );
+  // NaN is not finite, falls back to 0, clamped to 1
+  assert.deepEqual(
+    constrainImageDimensions({ width: NaN, height: NaN }),
+    { width: 1, height: 1 }
+  );
+  // All Infinity — everything clamped to 1
+  assert.deepEqual(
+    constrainImageDimensions({ width: Infinity, height: Infinity, maxEdge: Infinity }),
+    { width: 1, height: 1 }
+  );
+});
+
 test('estimateDataUrlBytes converts base64 payload length to bytes', () => {
   const payload = Buffer.from('tab-harbor-background').toString('base64');
   const dataUrl = `data:image/jpeg;base64,${payload}`;

@@ -44,7 +44,6 @@ const {
 
 const {
   applyGroupOrder,
-  createReorderedKeys,
   normalizeGroupOrderState,
   setPinEnabled,
 } = globalThis.TabOutGroupOrder || {};
@@ -502,11 +501,12 @@ function refreshHitokotoAfterPaint() {
     return;
   }
 
-  const cachedData = hitokotoDataCache.get(locale);
-  if (cachedData) {
-    applyHitokotoData(cachedData);
+  const cachedEntry = hitokotoDataCache.get(locale);
+  if (cachedEntry && Date.now() - cachedEntry.timestamp < 300000) {
+    applyHitokotoData(cachedEntry.data);
     return;
   }
+  if (cachedEntry) hitokotoDataCache.delete(locale);
 
   if (hitokotoFetchInFlight && hitokotoActiveFetchToken === hitokotoRequestToken) return;
   const token = ++hitokotoRequestToken;
@@ -521,7 +521,7 @@ function refreshHitokotoAfterPaint() {
     fetchHitokoto(locale)
       .then(data => {
         if (!data || token !== hitokotoRequestToken) return;
-        hitokotoDataCache.set(locale, data);
+        hitokotoDataCache.set(locale, { data, timestamp: Date.now() });
         applyHitokotoData(data);
       })
       .catch(() => {
@@ -1193,7 +1193,7 @@ function buildMoveMenu(tab) {
       data-tab-id="${tab.id}"
       data-group-id="${group.id}"
     >
-      ${runtimeEscapeHtml ? runtimeEscapeHtml(group.name) : group.name}
+      ${runtimeEscapeHtml ? runtimeEscapeHtml(group.name) : String(group.name).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}
     </button>`).join('');
 
   return `
@@ -1487,14 +1487,14 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}) {
     const count    = urlCounts[tab.url] || 1;
     const dupeTag  = count > 1 ? ` <span class="chip-dupe-badge">(${count}x)</span>` : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
-    const safeUrl   = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url || '') : (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(label) : label.replace(/"/g, '&quot;');
-    const safeLabel = runtimeEscapeHtml ? runtimeEscapeHtml(label) : label;
+    const safeUrl   = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url || '') : (tab.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeTitle = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(label) : label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeLabel = runtimeEscapeHtml ? runtimeEscapeHtml(label) : String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const iconData = runtimeGetIconSources(tab, 16);
     const faviconUrl = iconData.sources[0] || '';
     const fallbackUrl = iconData.sources[1] || '';
     const fallbackLabel = runtimeGetFallbackLabel(label, iconData.hostname);
-    const safeFallbackUrl = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(fallbackUrl) : fallbackUrl.replace(/"/g, '&quot;');
+    const safeFallbackUrl = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(fallbackUrl) : fallbackUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" aria-label="${safeTitle}">
       ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" data-fallback-src="${safeFallbackUrl}">` : ''}
       <span class="chip-favicon chip-favicon-fallback"${faviconUrl ? ' style="display:none"' : ''}>${fallbackLabel}</span>
@@ -1563,13 +1563,6 @@ function renderDomainCard(group) {
       </span>`
     : '';
 
-  // Deduplicate for display: show each URL once, with (Nx) badge if duped
-  const seen = new Set();
-  const uniqueTabs = [];
-  for (const tab of tabs) {
-    if (!seen.has(tab.url)) { seen.add(tab.url); uniqueTabs.push(tab); }
-  }
-
   const orderedTabs = getOrderedUniqueTabsForGroup(group);
   const visibleTabs = orderedTabs.slice(0, 8);
   const extraCount  = orderedTabs.length - visibleTabs.length;
@@ -1584,16 +1577,16 @@ function renderDomainCard(group) {
     const count    = urlCounts[tab.url];
     const dupeTag  = count > 1 ? ` <span class="chip-dupe-badge">(${count}x)</span>` : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
-    const safeUrl   = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url || '') : (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(label) : label.replace(/"/g, '&quot;');
-    const safeLabel = runtimeEscapeHtml ? runtimeEscapeHtml(label) : label;
-    const safeSortId = (runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url) : tab.url.replace(/"/g, '&quot;'));
-    const safeGroupId = (runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(group.domain) : String(group.domain).replace(/"/g, '&quot;'));
+    const safeUrl   = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url || '') : (tab.url || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeTitle = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(label) : label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeLabel = runtimeEscapeHtml ? runtimeEscapeHtml(label) : String(label).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const safeSortId = (runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(tab.url) : tab.url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    const safeGroupId = (runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(group.domain) : String(group.domain).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
     const iconData = runtimeGetIconSources(tab, 16);
     const faviconUrl = iconData.sources[0] || '';
     const fallbackUrl = iconData.sources[1] || '';
     const fallbackLabel = runtimeGetFallbackLabel(label, iconData.hostname);
-    const safeFallbackUrl = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(fallbackUrl) : fallbackUrl.replace(/"/g, '&quot;');
+    const safeFallbackUrl = runtimeEscapeHtmlAttribute ? runtimeEscapeHtmlAttribute(fallbackUrl) : fallbackUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" data-chip-sort-id="${safeSortId}" data-chip-group-id="${safeGroupId}" aria-label="${safeTitle}">
       <button class="drawer-reorder-handle chip-reorder-handle" type="button" data-chip-drag-handle="tab" aria-label="${runtimeT ? runtimeT('dragReorderTab') : 'Drag to reorder tab'}">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" /></svg>
@@ -1636,7 +1629,7 @@ function renderDomainCard(group) {
       <div class="mission-content">
         <div class="mission-top">
           <div class="mission-heading">
-            <span class="mission-name">${isLanding ? (runtimeT ? runtimeT('homepagesLabel') : 'Homepages') : (runtimeEscapeHtml ? runtimeEscapeHtml(group.label || friendlyDomain(group.domain)) : (group.label || friendlyDomain(group.domain)))}</span>
+            <span class="mission-name">${isLanding ? (runtimeT ? runtimeT('homepagesLabel') : 'Homepages') : (runtimeEscapeHtml ? runtimeEscapeHtml(group.label || friendlyDomain(group.domain)) : String(group.label || friendlyDomain(group.domain)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'))}</span>
             ${tabBadge}
             ${dupeBadge}
           </div>
@@ -1662,6 +1655,7 @@ function renderGroupNav(group) {
   };
   const iconData = runtimeGetGroupIcon(orderedGroup, label, 32);
   const safeTooltip = runtimeEscapeHtmlAttribute(label);
+  const safeAriaLabel = typeof runtimeEscapeHtmlAttribute === 'function' ? runtimeEscapeHtmlAttribute(label) : label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   return `
     <button
@@ -1670,7 +1664,7 @@ function renderGroupNav(group) {
       data-group-id="${group.domain}"
       data-domain-id="${stableId}"
       data-tooltip="${safeTooltip}"
-      aria-label="${runtimeT ? runtimeT('jumpToLabel', { label }) : `Jump to ${label}` }"
+      aria-label="${runtimeT ? runtimeT('jumpToLabel', { label: safeAriaLabel }) : `Jump to ${safeAriaLabel}` }"
       draggable="false"
     >
       ${iconData.src
@@ -1821,21 +1815,23 @@ async function renderStaticDashboard(options = {}) {
   // --- Group tabs by domain ---
   // Landing pages (Gmail inbox, Twitter home, etc.) get their own special group
   // so they can be closed together without affecting content tabs on the same domain.
-  const LANDING_PAGE_PATTERNS = [
-    { hostname: 'mail.google.com', test: (p, h) =>
-        !h.includes('#inbox/') && !h.includes('#sent/') && !h.includes('#search/') },
-    { hostname: 'x.com',               pathExact: ['/home'] },
-    { hostname: 'www.linkedin.com',    pathExact: ['/'] },
-    { hostname: 'github.com',          pathExact: ['/'] },
-    { hostname: 'www.youtube.com',     pathExact: ['/'] },
-    // Merge personal patterns from config.local.js (if it exists)
-    ...(typeof LOCAL_LANDING_PAGE_PATTERNS !== 'undefined' ? LOCAL_LANDING_PAGE_PATTERNS : []),
-  ];
+  function getLandingPagePatterns() {
+    return [
+      { hostname: 'mail.google.com', test: (p, h) =>
+          !h.includes('#inbox/') && !h.includes('#sent/') && !h.includes('#search/') },
+      { hostname: 'x.com',               pathExact: ['/home'] },
+      { hostname: 'www.linkedin.com',    pathExact: ['/'] },
+      { hostname: 'github.com',          pathExact: ['/'] },
+      { hostname: 'www.youtube.com',     pathExact: ['/'] },
+      // Merge personal patterns from config.local.js (if it exists)
+      ...(typeof LOCAL_LANDING_PAGE_PATTERNS !== 'undefined' ? LOCAL_LANDING_PAGE_PATTERNS : []),
+    ];
+  }
 
   function isLandingPage(url) {
     try {
       const parsed = new URL(url);
-      return LANDING_PAGE_PATTERNS.some(p => {
+      return getLandingPagePatterns().some(p => {
         // Support both exact hostname and suffix matching (for wildcard subdomains)
         const hostnameMatch = p.hostname
           ? parsed.hostname === p.hostname
@@ -1869,13 +1865,15 @@ async function renderStaticDashboard(options = {}) {
   const landingTabs = [];
 
   // Custom group rules from config.local.js (if any)
-  const customGroups = typeof LOCAL_CUSTOM_GROUPS !== 'undefined' ? LOCAL_CUSTOM_GROUPS : [];
+  function getCustomGroups() {
+    return typeof LOCAL_CUSTOM_GROUPS !== 'undefined' ? LOCAL_CUSTOM_GROUPS : [];
+  }
 
   // Check if a URL matches a custom group rule; returns the rule or null
   function matchCustomGroup(url) {
     try {
       const parsed = new URL(url);
-      return customGroups.find(r => {
+      return getCustomGroups().find(r => {
         const hostMatch = r.hostname
           ? parsed.hostname === r.hostname
           : r.hostnameEndsWith
@@ -1934,8 +1932,8 @@ async function renderStaticDashboard(options = {}) {
 
   // Sort: landing pages first, then domains from landing page sites, then by tab count
   // Collect exact hostnames and suffix patterns for priority sorting
-  const landingHostnames = new Set(LANDING_PAGE_PATTERNS.map(p => p.hostname).filter(Boolean));
-  const landingSuffixes = LANDING_PAGE_PATTERNS.map(p => p.hostnameEndsWith).filter(Boolean);
+  const landingHostnames = new Set(getLandingPagePatterns().map(p => p.hostname).filter(Boolean));
+  const landingSuffixes = getLandingPagePatterns().map(p => p.hostnameEndsWith).filter(Boolean);
   function isLandingDomain(domain) {
     if (landingHostnames.has(domain)) return true;
     return landingSuffixes.some(s => domain.endsWith(s));
@@ -3039,9 +3037,9 @@ document.addEventListener('change', async (e) => {
     const customBackground = await compressImageFileForStorage(file);
     await saveThemePreferences({ customBackground });
     setThemeMenuOpen(false, { restoreFocus: true });
-    showToast('Background updated');
+    showToast(runtimeT ? runtimeT('toastBackgroundUpdated') : 'Background updated');
   } catch (err) {
-    showToast(err?.message || 'Could not load background');
+    showToast(err?.message || (runtimeT ? runtimeT('toastCouldNotLoadBackground') : 'Could not load background'));
   }
 });
 
@@ -3120,10 +3118,10 @@ function injectDynamicAnimationStyles() {
  */
 function setupImageErrorHandlers() {
   // Handle chip favicons
-  document.querySelectorAll('.chip-favicon[data-fallback-url]').forEach(img => {
+  document.querySelectorAll('.chip-favicon[data-fallback-src]').forEach(img => {
     if (!img.dataset.errorHandlerAttached) {
       img.addEventListener('error', function() {
-        const fallbackUrl = this.dataset.fallbackUrl;
+        const fallbackUrl = this.dataset.fallbackSrc;
         if (fallbackUrl && this.dataset.fallbackApplied !== 'true') {
           this.dataset.fallbackApplied = 'true';
           this.src = fallbackUrl;

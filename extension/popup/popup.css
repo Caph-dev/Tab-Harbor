@@ -372,7 +372,6 @@ body.popup-shell {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
-  padding-left: 2px;
   /* subtle left rule accent */
   border-left: 2px solid var(--warm-gray);
   padding-left: 6px;
