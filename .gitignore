@@ -1,5 +1,25 @@
+# Tab Harbor — local-only and machine-generated files
+# The extension ships as static assets; nothing here should come from a build.
+
+# Local configuration overrides (private; loaded by config-loader.js)
 extension/config.local.js
+
+# Agent / skill caches (per-machine, never committed)
+.agents/
+.superpowers/
+
+# Editor / IDE metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS metadata
 .DS_Store
+._*
+Thumbs.db
+
+# Distribution archive and runtime logs
 extension.zip
-.idea
-.vscode
+*.log

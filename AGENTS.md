@@ -2,6 +2,14 @@
 
 This file captures project-level design and implementation constraints for agents working in this repository.
 
+## Project Shape
+
+1. Tab Harbor is a browser extension workspace under `extension/`.
+2. There is currently no root `package.json`; do not assume npm scripts exist.
+3. Tests are plain Node test files next to extension source files, commonly run with `node --test extension/*.test.js`.
+4. The runtime is intentionally dependency-light. Do not introduce a bundler, framework, package manager workflow, or build step unless the task explicitly requires it.
+5. The extension is loaded from static files. HTML, CSS, manifest, and ordered scripts are product-critical assets, not generated output.
+
 ## Design Direction
 
 1. Tab Harbor is a quiet browser workspace, not a SaaS dashboard, wallpaper page, or gamified productivity product.
@@ -37,6 +45,18 @@ This file captures project-level design and implementation constraints for agent
    - `theme-controls.js`
    - `drawer-manager.js`
    - `dashboard-runtime.js`
+6. Prefer small, named helpers over expanding large event handlers or rendering functions.
+7. Keep persistence, DOM rendering, browser API calls, and visual state transitions separated when practical.
+
+## File Map
+
+1. `extension/index.html` defines the extension page shell and script loading contract.
+2. `extension/style.css` owns the main visual system and must preserve the quiet desk atmosphere.
+3. `extension/app.js` starts the app and should remain orchestration-focused.
+4. `extension/dashboard-runtime.js`, `extension/drawer-manager.js`, `extension/theme-controls.js`, and `extension/ui-helpers.js` carry most UI runtime responsibilities.
+5. `extension/*-store.js`, `extension/*-sync*.js`, and `extension/list-order.js` contain state and ordering behavior; keep their tests close to behavior changes.
+6. `extension/popup/` is a separate popup surface; do not assume dashboard CSS or runtime behavior applies there.
+7. `docs/agents/` contains agent-operational references for issue tracking, labels, and domain docs.
 
 ## Refactor Safety
 
@@ -44,11 +64,25 @@ This file captures project-level design and implementation constraints for agent
 2. A passing `node --test extension/*.test.js` run is necessary but not sufficient for startup refactors.
 3. If the page shows static scaffolding but not dynamic tab data, first suspect runtime initialization failure before changing data logic.
 4. For startup regressions, inspect real browser console/runtime errors before continuing to refactor.
+5. Avoid moving functions between script files unless you have checked all `globalThis` exports/imports and the `index.html` load order.
+6. When touching drag, ordering, sync, or persistence behavior, look for an adjacent `*.test.js` file before deciding whether new coverage is needed.
+
+## Working Rules
+
+1. Do not overwrite unrelated user changes. This repository may contain local or untracked agent-skill files.
+2. Keep edits narrow and product-facing changes consistent with the calm, composed identity.
+3. Prefer direct static-file edits over adding tooling.
+4. Do not add dependencies, package manifests, or generated assets unless explicitly requested.
+5. When changing browser-extension behavior, consider Chrome extension constraints and real browser runtime behavior, not just Node tests.
+6. Treat accessibility regressions as product regressions: focus visibility, hit targets, reduced motion, contrast, and non-hover access matter.
 
 ## Validation
 
 1. Run `node --test extension/*.test.js` after code changes that affect UI structure, script loading, or runtime behavior.
 2. For script-loading or initialization changes, also verify the extension in a real browser session.
+3. For CSS-only changes, inspect the affected state visually when possible and confirm reduced-motion behavior if animations/transitions changed.
+4. For persistence or sync changes, run the closest focused tests first, then the full `node --test extension/*.test.js` suite when practical.
+5. If a command fails because project tooling is absent, report the missing tool/script plainly instead of inventing a workflow.
 
 ## Reference
 
