@@ -1,0 +1,171 @@
+{
+  "schema": "tab-harbor-recovery-v1",
+  "createdAt": "2026-06-21T07:29:28.369436Z",
+  "chromeProfile": "/Users/ty/Library/Application Support/Google/Chrome/Profile 2",
+  "extensionId": "ngfkhfdhdpccalgkkglocjggmnphlcml",
+  "summary": {
+    "savedCount": 2,
+    "todoCount": 0,
+    "shortcutCount": 1,
+    "hasThemePreferences": true,
+    "hasSessionGroups": true
+  },
+  "restorePayload": {
+    "local": {
+      "deferred": [
+        {
+          "completed": false,
+          "completedAt": null,
+          "deletedAt": null,
+          "dismissed": false,
+          "id": "saved-1782026008959-9x0sxb",
+          "savedAt": "2026-06-21T07:13:28.959Z",
+          "title": "Leonxlnx / 味觉技能：味觉技能 —— 赋予你的 AI 好品味。阻止 AI 生成无聊、通用的垃圾",
+          "updatedAt": "2026-06-21T07:13:28.959Z",
+          "url": "https://github.com/Leonxlnx/taste-skill"
+        },
+        {
+          "completed": false,
+          "completedAt": null,
+          "deletedAt": null,
+          "dismissed": false,
+          "id": "saved-1782026528264-8ratpv",
+          "savedAt": "2026-06-21T07:22:08.264Z",
+          "title": "[SubBoost] 开源 Clash 订阅转换、增强和管理工具丨 UI 可视化配置链式代理、精确分流和防 DNS 泄露 - 开发调优",
+          "updatedAt": "2026-06-21T07:22:08.264Z",
+          "url": "https://linux.do/t/topic/2431679"
+        }
+      ],
+      "todos": [],
+      "quickShortcuts": [
+        {
+          "createdAt": "2026-06-21T07:22:37.763Z",
+          "deletedAt": null,
+          "dismissed": false,
+          "icon": "https://www.google.com/s2/favicons?domain=linux.do&sz=32",
+          "iconKind": "image",
+          "iconMask": "rounded",
+          "iconOmitted": false,
+          "id": "shortcut-1782026557761-6lemo1",
+          "label": "LINUX DO",
+          "updatedAt": "2026-06-21T07:23:18.489Z",
+          "url": "https://linux.do/"
+        }
+      ],
+      "tabHarbor.saved.order": {
+        "ids": [
+          "saved-1782026008959-9x0sxb",
+          "saved-1782026528264-8ratpv"
+        ],
+        "updatedAt": "2026-06-21T07:22:08.264Z"
+      },
+      "tabHarbor.todo.order": {
+        "ids": [],
+        "updatedAt": "2026-06-21T07:29:28.369436Z"
+      },
+      "tabHarbor.shortcut.order": {
+        "ids": [
+          "shortcut-1782026557761-6lemo1"
+        ],
+        "updatedAt": "2026-06-21T07:29:28.369436Z"
+      },
+      "themePreferences": {
+        "customBackground": "",
+        "drawerSpeed": 4,
+        "hitokotoEnabled": true,
+        "mode": "system",
+        "paletteId": "mist",
+        "quickShortcutIconRadius": 14,
+        "quickShortcutIconSize": 30,
+        "surfaceOpacity": 14
+      },
+      "sessionGroups": {
+        "assignments": {},
+        "groups": []
+      }
+    },
+    "sync": {
+      "tabHarbor.saved.order": {
+        "ids": [
+          "saved-1782026008959-9x0sxb",
+          "saved-1782026528264-8ratpv"
+        ],
+        "updatedAt": "2026-06-21T07:22:08.264Z"
+      },
+      "tabHarbor.todo.order": {
+        "ids": [],
+        "updatedAt": "2026-06-21T07:29:28.369436Z"
+      },
+      "tabHarbor.shortcut.order": {
+        "ids": [
+          "shortcut-1782026557761-6lemo1"
+        ],
+        "updatedAt": "2026-06-21T07:29:28.369436Z"
+      },
+      "tabHarbor.saved.item.saved-1782026008959-9x0sxb": {
+        "completed": false,
+        "completedAt": null,
+        "deletedAt": null,
+        "dismissed": false,
+        "id": "saved-1782026008959-9x0sxb",
+        "savedAt": "2026-06-21T07:13:28.959Z",
+        "title": "Leonxlnx / 味觉技能：味觉技能 —— 赋予你的 AI 好品味。阻止 AI 生成无聊、通用的垃圾",
+        "updatedAt": "2026-06-21T07:13:28.959Z",
+        "url": "https://github.com/Leonxlnx/taste-skill"
+      },
+      "tabHarbor.saved.item.saved-1782026528264-8ratpv": {
+        "completed": false,
+        "completedAt": null,
+        "deletedAt": null,
+        "dismissed": false,
+        "id": "saved-1782026528264-8ratpv",
+        "savedAt": "2026-06-21T07:22:08.264Z",
+        "title": "[SubBoost] 开源 Clash 订阅转换、增强和管理工具丨 UI 可视化配置链式代理、精确分流和防 DNS 泄露 - 开发调优",
+        "updatedAt": "2026-06-21T07:22:08.264Z",
+        "url": "https://linux.do/t/topic/2431679"
+      },
+      "tabHarbor.shortcut.item.shortcut-1782026557761-6lemo1": {
+        "createdAt": "2026-06-21T07:22:37.763Z",
+        "deletedAt": null,
+        "dismissed": false,
+        "icon": "https://www.google.com/s2/favicons?domain=linux.do&sz=32",
+        "iconKind": "image",
+        "iconMask": "rounded",
+        "iconOmitted": false,
+        "id": "shortcut-1782026557761-6lemo1",
+        "label": "LINUX DO",
+        "updatedAt": "2026-06-21T07:23:18.489Z",
+        "url": "https://linux.do/"
+      },
+      "themePreferences": {
+        "customBackground": "",
+        "drawerSpeed": 4,
+        "hitokotoEnabled": true,
+        "mode": "system",
+        "paletteId": "mist",
+        "quickShortcutIconRadius": 14,
+        "quickShortcutIconSize": 30,
+        "surfaceOpacity": 14
+      }
+    }
+  },
+  "latestOptionalState": {
+    "themePreferences": {
+      "customBackground": "",
+      "drawerSpeed": 4,
+      "hitokotoEnabled": true,
+      "mode": "system",
+      "paletteId": "mist",
+      "quickShortcutIconRadius": 14,
+      "quickShortcutIconSize": 30,
+      "surfaceOpacity": 14
+    },
+    "sessionGroups": {
+      "assignments": {},
+      "groups": []
+    },
+    "groupOrder": null,
+    "groupTabOrder": null,
+    "drawerTriggerPosition": null
+  }
+}

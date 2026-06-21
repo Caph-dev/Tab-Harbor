@@ -5,7 +5,7 @@
 extension/config.local.js
 
 # Agent / skill caches (per-machine, never committed)
-.agents/
+
 .superpowers/
 skills-lock.json
 
