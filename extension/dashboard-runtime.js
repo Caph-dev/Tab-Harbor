@@ -1886,6 +1886,19 @@ async function renderStaticDashboard(options = {}) {
     } catch { return null; }
   }
 
+  function getAutomaticGroupDomain(url) {
+    if (url && url.startsWith('file://')) return 'local-files';
+
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    if (!hostname) return '';
+
+    const isNetworkHost = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)
+      || /^localhost$/i.test(hostname)
+      || /^\[[0-9a-f:]+\]$/i.test(hostname);
+    return isNetworkHost && parsed.port ? parsed.host : hostname;
+  }
+
   for (const tab of realTabs) {
     try {
       const assignedGroupId = sessionGroupsState.assignments[String(tab.id)];
@@ -1911,16 +1924,11 @@ async function renderStaticDashboard(options = {}) {
         continue;
       }
 
-      let hostname;
-      if (tab.url && tab.url.startsWith('file://')) {
-        hostname = 'local-files';
-      } else {
-        hostname = new URL(tab.url).hostname;
-      }
-      if (!hostname) continue;
+      const groupDomain = getAutomaticGroupDomain(tab.url);
+      if (!groupDomain) continue;
 
-      if (!groupMap[hostname]) groupMap[hostname] = { domain: hostname, tabs: [] };
-      groupMap[hostname].tabs.push(tab);
+      if (!groupMap[groupDomain]) groupMap[groupDomain] = { domain: groupDomain, tabs: [] };
+      groupMap[groupDomain].tabs.push(tab);
     } catch {
       // Skip malformed URLs
     }

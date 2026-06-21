@@ -98,7 +98,7 @@ test('getResolvedThemeDefinition resolves dark tokens from palette family', () =
   const theme = getResolvedThemeDefinition({ mode: 'dark', paletteId: 'paper' });
   assert.equal(theme.name, 'Paper');
   assert.equal(theme.tone, 'dark');
-  assert.equal(theme.vars['--paper'], '#1a1613');
+  assert.equal(theme.vars['--paper'], '#17130f');
 });
 
 // ---- filterRealTabs ----

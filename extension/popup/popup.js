@@ -72,10 +72,20 @@ function escapeAttr(value = '') {
 }
 
 function friendlyDomain(domain) {
-  return String(domain || '')
+  const normalizedDomain = String(domain || '').trim();
+  if (isNetworkAddressLabel(normalizedDomain)) return normalizedDomain;
+
+  return normalizedDomain
     .replace(/^www\./, '')
     .replace(/\./g, ' ')
     .trim();
+}
+
+function isNetworkAddressLabel(domain) {
+  const label = String(domain || '').trim();
+  return /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/.test(label)
+    || /^localhost(?::\d+)?$/i.test(label)
+    || /^\[[0-9a-f:]+\](?::\d+)?$/i.test(label);
 }
 
 function stripTitleNoise(title) {
@@ -169,7 +179,10 @@ function smartTitle(title, url) {
 function getTabHostname(tab) {
   try {
     if (tab?.url?.startsWith('file://')) return 'local-files';
-    return new URL(tab?.url || '').hostname || '';
+    const parsed = new URL(tab?.url || '');
+    const hostname = parsed.hostname || '';
+    if (isNetworkAddressLabel(hostname) && parsed.port) return parsed.host;
+    return hostname;
   } catch {
     return '';
   }
@@ -187,7 +200,10 @@ function getTabLabel(tab = {}) {
 
   try {
     const parsed = new URL(url);
-    return friendlyDomain(parsed.hostname || hostname) || url || 'Tab';
+    const fallbackHost = isNetworkAddressLabel(parsed.hostname) && parsed.port
+      ? parsed.host
+      : (parsed.hostname || hostname);
+    return friendlyDomain(fallbackHost) || url || 'Tab';
   } catch {
     return url || 'Tab';
   }

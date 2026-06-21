@@ -117,6 +117,14 @@ test('popup follows dashboard tab-order storage and richer title shaping', () =>
   assert.match(popupJs, /function cleanTitle\(title, hostname\)/);
 });
 
+test('IP address tab labels preserve dot notation and ports', () => {
+  assert.match(helperJs, /function isNetworkAddressLabel\(hostname\)/);
+  assert.match(helperJs, /isNetworkAddressLabel\(normalizedHostname\)\) return normalizedHostname;/);
+  assert.match(runtimeJs, /function getAutomaticGroupDomain\(url\)[\s\S]*return isNetworkHost && parsed\.port \? parsed\.host : hostname;/);
+  assert.match(popupJs, /function isNetworkAddressLabel\(domain\)/);
+  assert.match(popupJs, /if \(isNetworkAddressLabel\(hostname\) && parsed\.port\) return parsed\.host;/);
+});
+
 test('manifest action keeps the popup entry wired to popup html', () => {
   const manifest = fs.readFileSync(path.join(__dirname, 'manifest.json'), 'utf8');
 
@@ -378,10 +386,13 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(css, /\.tab-cleanup-icon svg\s*\{[\s\S]*color:\s*var\(--theme-accent-strong\);/);
   assert.match(css, /\.tab-cleanup-btn\s*\{[\s\S]*background:\s*var\(--banner-action-bg\);[\s\S]*color:\s*var\(--banner-action-text\);/);
   assert.match(css, /\.tab-cleanup-btn:hover\s*\{[\s\S]*background:\s*var\(--banner-action-bg-hover\);/);
-  assert.match(css, /\.open-tabs-badge\s*\{[\s\S]*color:\s*var\(--workspace-chip-text\);[\s\S]*background:\s*var\(--workspace-chip-bg\);[\s\S]*border:\s*1px solid var\(--workspace-chip-border\);/);
+  assert.match(css, /\.open-tabs-badge\s*\{[\s\S]*position:\s*relative;[\s\S]*background:\s*\n\s*linear-gradient\(180deg,[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
+  assert.match(css, /\.open-tabs-badge::before\s*\{[\s\S]*width:\s*5px;[\s\S]*height:\s*5px;[\s\S]*box-shadow:\s*0 0 0 3px/);
   assert.match(css, /\.open-tabs-badge\.is-duplicate\s*\{[\s\S]*background:\s*var\(--workspace-chip-bg-strong\);/);
-  assert.match(css, /\.action-btn\.close-tabs\s*\{[\s\S]*border-color:\s*var\(--workspace-chip-border\);[\s\S]*color:\s*var\(--workspace-chip-text\);[\s\S]*background:\s*color-mix\(in srgb, var\(--workspace-chip-bg\) 92%, var\(--card-bg\) 8%\);[\s\S]*border-radius:\s*8px;[\s\S]*min-height:\s*28px;/);
-  assert.match(css, /\.action-btn\.close-tabs:hover\s*\{[\s\S]*background:\s*var\(--workspace-chip-bg-strong\);[\s\S]*border-color:\s*var\(--workspace-accent-border\);/);
+  assert.match(css, /\.action-btn\.close-tabs\s*\{[\s\S]*position:\s*relative;[\s\S]*border-radius:\s*999px;[\s\S]*background:\s*\n\s*linear-gradient\(180deg,[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
+  assert.match(css, /\.action-btn\.close-tabs::before\s*\{[\s\S]*background:\s*linear-gradient\(180deg, color-mix\(in srgb, white 38%, transparent\), transparent\);/);
+  assert.match(css, /\.action-btn\.close-tabs:hover,\s*\.action-btn\.close-tabs:focus-visible\s*\{[\s\S]*transform:\s*translateY\(-2px\);[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
+  assert.match(css, /\.action-btn\.close-tabs:active\s*\{[\s\S]*transform:\s*translateY\(0\) scale\(0\.99\);/);
   assert.match(css, /\.deferred-shell\s*\{[\s\S]*background:\s*color-mix\(in srgb, var\(--card-bg\) var\(--panel-card-opacity\), transparent\);/);
   assert.match(css, /--tooltip-surface:\s*color-mix\(in srgb, var\(--workspace-accent-soft\) 32%, var\(--card-bg\) 68%\);/);
   assert.match(css, /\.drawer-title-btn\.is-active,\s*\.drawer-title-btn\[aria-selected="true"\]\s*\{[\s\S]*text-decoration-color:\s*var\(--drawer-tab-underline-active\);/);
@@ -604,6 +615,22 @@ test('saved and todo lists expose drag handles with drag-state styling', () => {
   assert.match(css, /\.deferred-item\.is-dragging,\s*\.todo-item\.is-dragging\s*\{/);
 });
 
+test('left tab cells keep a transparent paper-like default surface', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+  const missionCardRule = css.match(/\.mission-card\s*\{\s*padding:\s*18px 18px 16px;[\s\S]*?\n\}/)?.[0] || '';
+  const missionCardAfterRule = css.match(/\.mission-card::after\s*\{[\s\S]*?\n\}/)?.[0] || '';
+  const pageChipRule = css.match(/\.page-chip\s*\{\s*position:\s*relative;\s*min-height:\s*42px;[\s\S]*?\n\}/)?.[0] || '';
+
+  assert.match(missionCardRule, /background:\s*transparent;/);
+  assert.match(missionCardRule, /box-shadow:\s*none;/);
+  assert.match(missionCardAfterRule, /display:\s*none;/);
+  assert.match(pageChipRule, /border:\s*1px solid transparent;/);
+  assert.match(pageChipRule, /background:\s*transparent;/);
+  assert.match(pageChipRule, /box-shadow:\s*none;/);
+  assert.doesNotMatch(pageChipRule, /linear-gradient/);
+  assert.doesNotMatch(css, /\.mission-pages \.page-chip:last-child::after/);
+});
+
 test('saved trigger icon uses the bookmark artwork', () => {
   assert.match(html, /id="deferredTrigger"[\s\S]*viewBox="0 0 24 24"/);
   assert.match(html, /id="deferredTrigger"[\s\S]*M17\.25 6\.75v13\.22/);
@@ -672,12 +699,17 @@ test('drawer detail escapes todo title and description before injecting HTML', (
 });
 
 test('theme state uses separate mode and palette preferences', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
   assert.match(themeJs, /mode:\s*'system'/);
   assert.match(themeJs, /paletteId:\s*'paper'/);
   assert.doesNotMatch(themeJs, /themePreferences = \{[\s\S]*themeId:/);
   assert.match(themeJs, /resolvedTone/);
   assert.match(themeJs, /theme-tone-dark/);
   assert.match(themeJs, /theme-tone-light/);
+  assert.match(themeJs, /body\.dataset\.themePalette = theme\.id;/);
+  assert.match(css, /body\.theme-tone-light\[data-theme-palette="paper"\]:not\(\.has-custom-background\)\s*\{[\s\S]*background-color:\s*#f4eddf;[\s\S]*radial-gradient\(ellipse at 18% 4%/);
+  assert.match(css, /body\.theme-tone-light\[data-theme-palette="paper"\]:not\(\.has-custom-background\)::after\s*\{[\s\S]*linear-gradient\(104deg,[\s\S]*background-size:\s*132px 132px/);
   assert.match(appJs, /themeModeSystem/);
   assert.match(appJs, /themeModeLight/);
   assert.match(appJs, /themeModeDark/);

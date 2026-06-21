@@ -94,6 +94,12 @@ test('friendlyDomain replaces dots with spaces', () => {
   assert.equal(friendlyDomain('mail.google.com'), 'mail google com');
 });
 
+test('friendlyDomain preserves IP and network address labels', () => {
+  assert.equal(friendlyDomain('118.89.57.175'), '118.89.57.175');
+  assert.equal(friendlyDomain('118.89.57.175:5678'), '118.89.57.175:5678');
+  assert.equal(friendlyDomain('localhost:3000'), 'localhost:3000');
+});
+
 test('friendlyDomain handles empty/null input', () => {
   assert.equal(friendlyDomain(''), '');
   assert.equal(friendlyDomain(null), '');
@@ -101,8 +107,7 @@ test('friendlyDomain handles empty/null input', () => {
 });
 
 test('friendlyDomain strips www then replaces dots with spaces then trims only ends', () => {
-  // leading/trailing spaces trimmed, internal spaces preserved
-  assert.equal(friendlyDomain('  www.example.org  '), 'www example org');
+  assert.equal(friendlyDomain('  www.example.org  '), 'example org');
 });
 
 // ---- stripTitleNoise ----
@@ -153,6 +158,11 @@ test('getTabLabel falls back to "Tab" for missing title and url', () => {
 test('getTabLabel strips www from hostname fallback via friendlyDomain', () => {
   const tab = { title: '', url: 'https://www.google.com/search' };
   assert.equal(getTabLabel(tab), 'google com');
+});
+
+test('getTabLabel preserves IP address and port for URL-only tabs', () => {
+  const tab = { title: '', url: 'http://118.89.57.175:5678/admin/jobs' };
+  assert.equal(getTabLabel(tab), '118.89.57.175:5678');
 });
 
 // ---- isLandingPage ----

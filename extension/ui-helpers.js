@@ -384,21 +384,31 @@ const FRIENDLY_DOMAINS = {
 };
 
 function friendlyDomain(hostname) {
-  if (!hostname) return '';
-  if (FRIENDLY_DOMAINS[hostname]) return FRIENDLY_DOMAINS[hostname];
+  const normalizedHostname = String(hostname || '').trim();
+  if (!normalizedHostname) return '';
+  if (FRIENDLY_DOMAINS[normalizedHostname]) return FRIENDLY_DOMAINS[normalizedHostname];
 
-  if (hostname.endsWith('.substack.com') && hostname !== 'substack.com') {
-    return capitalize(hostname.replace('.substack.com', '')) + "'s Substack";
+  if (isNetworkAddressLabel(normalizedHostname)) return normalizedHostname;
+
+  if (normalizedHostname.endsWith('.substack.com') && normalizedHostname !== 'substack.com') {
+    return capitalize(normalizedHostname.replace('.substack.com', '')) + "'s Substack";
   }
-  if (hostname.endsWith('.github.io')) {
-    return capitalize(hostname.replace('.github.io', '')) + ' (GitHub Pages)';
+  if (normalizedHostname.endsWith('.github.io')) {
+    return capitalize(normalizedHostname.replace('.github.io', '')) + ' (GitHub Pages)';
   }
 
-  const clean = hostname
+  const clean = normalizedHostname
     .replace(/^www\./, '')
     .replace(/\.(com|org|net|io|co|ai|dev|app|so|me|xyz|info|us|uk|co\.uk|co\.jp)$/, '');
 
   return clean.split('.').map(part => capitalize(part)).join(' ');
+}
+
+function isNetworkAddressLabel(hostname) {
+  const label = String(hostname || '').trim();
+  return /^(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?$/.test(label)
+    || /^localhost(?::\d+)?$/i.test(label)
+    || /^\[[0-9a-f:]+\](?::\d+)?$/i.test(label);
 }
 
 function capitalize(str) {
