@@ -345,8 +345,6 @@
     'Rounded': '圆角矩形',
     'Icon size': '图标大小',
     'Icon radius': '图标圆角',
-    'Global icon size': '全局图标大小',
-    'Global corner radius': '全局圆角大小',
     'Paste an image with Cmd/Ctrl+V while the editor is focused.': '编辑器聚焦时可用 Cmd/Ctrl+V 粘贴图片。',
     'Cancel': '取消',
     'Save': '保存',

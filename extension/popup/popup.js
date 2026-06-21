@@ -10,7 +10,7 @@ const popupI18n = globalThis.TabHarborI18n || {};
 const SESSION_GROUPS_KEY = 'sessionGroups';
 const GROUP_ORDER_KEY = 'groupOrder';
 const GROUP_TAB_ORDER_KEY = 'groupTabOrder';
-const SHORTCUT_ICON_DEFAULT_SIZE = 30;
+const SHORTCUT_ICON_DEFAULT_SIZE = 32;
 const SHORTCUT_ICON_MASK_SIZE = 36;
 const SHORTCUT_ICON_DEFAULT_RADIUS = 0;
 const SHORTCUT_ICON_MASK_RADIUS = 10;
@@ -551,9 +551,21 @@ function renderShortcutCard(shortcut, index) {
   const stretchClass = iconKind === 'image' || iconKind === 'svg'
     ? ' quick-shortcut-icon-auto-stretch'
     : '';
+  const iconSource = iconKind === 'image'
+    ? 'custom-image'
+    : iconKind === 'svg'
+      ? 'custom-svg'
+      : iconKind === 'glyph'
+        ? 'glyph'
+        : primaryIconUrl
+          ? 'site'
+          : 'fallback';
+  const iconTone = popupTheme.getShortcutIconTone
+    ? popupTheme.getShortcutIconTone(iconData.hostname)
+    : 'neutral';
 
   return `
-    <div class="quick-shortcut-card popup-shortcut-card${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}" style="--s:${index};${iconStyle}">
+    <div class="quick-shortcut-card popup-shortcut-card${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}" data-icon-source="${iconSource}" data-icon-tone="${iconTone}" style="--s:${index};${iconStyle}">
       <button class="quick-shortcut-open" type="button" data-action="open-popup-url" data-url="${safeUrl}" aria-label="${safeLabel}">
         <span class="quick-shortcut-icon-wrap">
           ${primaryIconUrl ? `<img class="quick-shortcut-icon${iconKind === 'image' ? ' quick-shortcut-icon-custom' : ''}${stretchClass}" src="${primaryIconUrl}" alt="" draggable="false" data-auto-stretch-icon="true">` : ''}

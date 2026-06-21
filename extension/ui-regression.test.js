@@ -217,14 +217,17 @@ test('manifest keeps a fixed development key for stable unpacked extension id', 
   assert.ok(manifest.key.length > 300);
 });
 
-test('footer credits point to the repo and OO GitHub profile', () => {
+test('footer credits show version and Caph repository links', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
   assert.match(
     html,
-    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/V-IOLE-T\/tab-harbor"[\s\S]*>Tab Harbor<\/a> by <a class="footer-credit-link" href="https:\/\/github\.com\/V-IOLE-T"[\s\S]*>OO<\/a>/
+    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/Walaxy\/tab-harbor"[\s\S]*>Tab Harbor<\/a>[\s\S]*id="footerVersion">v—<\/span> by <a[\s\S]*href="https:\/\/github\.com\/Walaxy\/tab-harbor"[\s\S]*>Caph<\/a>/
   );
+  assert.match(appEntryJs, /function syncFooterVersion\(\)/);
+  assert.match(appEntryJs, /globalThis\.chrome\?\.runtime\?\.getManifest\?\.\(\)\.version/);
   assert.match(css, /\.footer-credit-link\s*\{/);
+  assert.match(css, /\.footer-version\s*\{/);
   assert.match(css, /\.footer-credit-link:hover,\s*\.footer-credit-link:focus-visible\s*\{/);
 });
 
@@ -437,13 +440,13 @@ test('quick tabs area renders shortcut cards and add button hooks', () => {
   assert.match(html, /data-action="search-shortcut-icons"/);
   assert.match(html, /id="shortcutEditorIconCandidates"/);
   assert.match(html, /data-action="set-shortcut-icon-mask"/);
-  assert.match(html, /id="shortcutEditorIconSize"/);
-  assert.match(html, /id="shortcutEditorIconRadius"/);
+  assert.doesNotMatch(html, /id="shortcutEditorIconSize"/);
+  assert.doesNotMatch(html, /id="shortcutEditorIconRadius"/);
   assert.match(css, /\.shortcut-editor-icon-candidates\s*\{[\s\S]*display:\s*grid;/);
   assert.match(css, /\.shortcut-editor-icon-candidate\s*\{/);
   assert.match(css, /\.quick-shortcut-card\.has-rounded-icon-mask \.quick-shortcut-icon-wrap\s*\{/);
   assert.match(css, /\.shortcut-editor-shape-options\s*\{[\s\S]*display:\s*grid;/);
-  assert.match(css, /\.shortcut-editor-range-row\s*\{/);
+  assert.doesNotMatch(css, /\.shortcut-editor-range-row\s*\{/);
   assert.match(themeJs, /createShortcutIconCandidates/);
   assert.match(themeJs, /probeShortcutIconCandidate/);
   assert.match(themeJs, /searchShortcutWebsiteIcons/);

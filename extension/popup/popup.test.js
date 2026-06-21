@@ -36,6 +36,7 @@ globalThis.window = { close: () => {} };
 globalThis.TabOutThemeControls = {
   filterRealTabs: tabs => Array.isArray(tabs) ? tabs : [],
   getQuickShortcutIconStylePreferences: () => ({ iconSize: 34, iconMaskRadius: 9 }),
+  getShortcutIconTone: hostname => hostname ? 'sage' : 'neutral',
 };
 globalThis.TabOutIconUtils = {
   escapeHtmlAttribute: v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
@@ -399,10 +400,34 @@ test('renderShortcutCard renders image icon when iconKind is image', () => {
   const html = renderShortcutCard(shortcut, 0);
   assert.ok(html.includes('data-action="open-popup-url"'));
   assert.ok(html.includes('data-url="https://github.com"'));
+  assert.ok(html.includes('data-icon-source="custom-image"'));
+  assert.ok(html.includes('data-icon-tone="neutral"'));
   assert.ok(html.includes('quick-shortcut-icon-custom'));
   assert.ok(html.includes('src="https://github.com/favicon.ico"'));
   assert.ok(html.includes('<span class="quick-shortcut-label">GitHub</span>'));
   assert.ok(!html.includes('has-rounded-icon-mask'));
+});
+
+test('renderShortcutCard renders site icon source and tone', () => {
+  const originalGetIconSources = globalThis._popupIcons.getIconSources;
+  globalThis._popupIcons.getIconSources = () => ({
+    sources: ['https://www.google.com/s2/favicons?domain=github.com&sz=32'],
+    hostname: 'github.com',
+  });
+
+  try {
+    const shortcut = {
+      label: 'GitHub',
+      url: 'https://github.com',
+    };
+    const html = renderShortcutCard(shortcut, 0);
+
+    assert.ok(html.includes('data-icon-source="site"'));
+    assert.ok(html.includes('data-icon-tone="sage"'));
+    assert.ok(html.includes('src="https://www.google.com/s2/favicons?domain=github.com&sz=32"'));
+  } finally {
+    globalThis._popupIcons.getIconSources = originalGetIconSources;
+  }
 });
 
 test('renderShortcutCard renders rounded icon mask settings', () => {
@@ -448,6 +473,7 @@ test('renderShortcutCard renders svg icon when iconKind is svg', () => {
   };
   const html = renderShortcutCard(shortcut, 0);
   assert.ok(html.includes('data:image/svg+xml;charset=utf-8,'));
+  assert.ok(html.includes('data-icon-source="custom-svg"'));
   assert.ok(html.includes('quick-shortcut-icon'));
   assert.ok(html.includes('quick-shortcut-label'));
 });
@@ -460,6 +486,7 @@ test('renderShortcutCard renders glyph icon when iconKind is glyph', () => {
     icon: '★',
   };
   const html = renderShortcutCard(shortcut, 0);
+  assert.ok(html.includes('data-icon-source="glyph"'));
   assert.ok(html.includes('quick-shortcut-custom-glyph'));
   assert.ok(html.includes('>★</span>'));
   assert.ok(html.includes('quick-shortcut-fallback'));
@@ -471,6 +498,7 @@ test('renderShortcutCard renders fallback label when no icon', () => {
     url: 'https://www.example.com',
   };
   const html = renderShortcutCard(shortcut, 0);
+  assert.ok(html.includes('data-icon-source="fallback"'));
   assert.ok(html.includes('quick-shortcut-fallback'));
   assert.ok(!html.includes('quick-shortcut-icon"'), 'no quick-shortcut-icon img should be present');
 });

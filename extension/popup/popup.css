@@ -212,9 +212,17 @@ body.popup-shell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 90%, white 10%),
+      color-mix(in srgb, var(--workspace-accent-soft) 14%, var(--card-bg) 86%)
+    );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--workspace-accent-border) 18%, transparent),
+    0 6px 14px color-mix(in srgb, var(--workspace-accent) 5%, transparent);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .popup-shortcut-card.has-rounded-icon-mask .quick-shortcut-icon-wrap {
@@ -224,19 +232,71 @@ body.popup-shell {
   overflow: hidden;
 }
 
+.popup-shortcut-card[data-icon-tone="amber"] .quick-shortcut-icon-wrap {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 88%, white 12%),
+      color-mix(in srgb, var(--accent-amber) 10%, var(--card-bg) 90%)
+    );
+}
+
+.popup-shortcut-card[data-icon-tone="sage"] .quick-shortcut-icon-wrap {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 88%, white 12%),
+      color-mix(in srgb, var(--accent-sage) 10%, var(--card-bg) 90%)
+    );
+}
+
+.popup-shortcut-card[data-icon-tone="mist"] .quick-shortcut-icon-wrap {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 88%, white 12%),
+      color-mix(in srgb, var(--accent-slate) 10%, var(--card-bg) 90%)
+    );
+}
+
+.popup-shortcut-card[data-icon-tone="rose"] .quick-shortcut-icon-wrap {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 88%, white 12%),
+      color-mix(in srgb, var(--accent-rose) 10%, var(--card-bg) 90%)
+    );
+}
+
+.popup-shortcut-card[data-icon-tone="slate"] .quick-shortcut-icon-wrap {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--card-bg) 88%, white 12%),
+      color-mix(in srgb, var(--accent-slate) 9%, var(--card-bg) 91%)
+    );
+}
+
 .popup-shortcut-card .quick-shortcut-icon {
-  width: var(--shortcut-icon-size, 30px);
-  height: var(--shortcut-icon-size, 30px);
-  border-radius: 0;
-  object-fit: cover;
+  width: min(var(--shortcut-icon-size, 32px), 32px);
+  height: min(var(--shortcut-icon-size, 32px), 32px);
+  border-radius: 5px;
+  object-fit: contain;
 }
 
 .popup-shortcut-card.has-rounded-icon-mask .quick-shortcut-icon {
-  border-radius: min(var(--shortcut-icon-radius, 10px), 8px);
+  border-radius: max(0px, calc(var(--shortcut-icon-radius, 10px) - 4px));
 }
 
 .popup-shortcut-card .quick-shortcut-icon-custom {
+  width: min(calc(var(--shortcut-icon-size, 32px) + 4px), 36px);
+  height: min(calc(var(--shortcut-icon-size, 32px) + 4px), 36px);
+  border-radius: 6px;
   object-fit: contain;
+}
+
+.popup-shortcut-card[data-icon-source="custom-svg"] .quick-shortcut-icon {
+  width: min(calc(var(--shortcut-icon-size, 32px) + 2px), 34px);
+  height: min(calc(var(--shortcut-icon-size, 32px) + 2px), 34px);
+}
+
+.popup-shortcut-card.has-rounded-icon-mask[data-icon-source="custom-svg"] .quick-shortcut-icon {
+  border-radius: max(0px, calc(var(--shortcut-icon-radius, 10px) - 3px));
 }
 
 .popup-shortcut-card.has-rounded-icon-mask .quick-shortcut-icon-custom.quick-shortcut-icon-auto-stretch,
@@ -254,27 +314,31 @@ body.popup-shell {
 }
 
 .popup-shortcut-card .quick-shortcut-custom-glyph {
-  width: var(--shortcut-icon-size, 30px);
-  height: var(--shortcut-icon-size, 30px);
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1;
 }
 
 .popup-shortcut-card .quick-shortcut-fallback {
-  width: var(--shortcut-icon-size, 30px);
-  height: var(--shortcut-icon-size, 30px);
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: var(--workspace-accent-soft);
-  color: var(--workspace-accent);
-  font-size: 13px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--workspace-accent-soft) 76%, var(--card-bg) 24%);
+  color: color-mix(in srgb, var(--workspace-accent) 82%, var(--ink) 18%);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
+}
+
+.popup-shortcut-card.has-rounded-icon-mask .quick-shortcut-fallback {
+  border-radius: max(0px, calc(var(--shortcut-icon-radius, 10px) - 4px));
 }
 
 .popup-shortcut-card .quick-shortcut-label {

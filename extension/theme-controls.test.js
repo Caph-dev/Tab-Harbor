@@ -29,6 +29,8 @@ const {
   filterRealTabs,
   getCodelifeFaviconUrl,
   getShortcutIconSearchHostname,
+  getShortcutIconTone,
+  getShortcutSiteIconData,
   getQuickShortcutIconStyleAttribute,
   getQuickShortcutIconStylePreferences,
   getResolvedThemeDefinition,
@@ -287,15 +289,42 @@ test('getShortcutIconSearchHostname normalizes URL-like input before icon search
   assert.equal(getShortcutIconSearchHostname('not a url'), '');
 });
 
-test('createShortcutIconCandidates returns common website icon sources', () => {
+test('createShortcutIconCandidates follows open-tab fallback favicon source', () => {
   const candidates = createShortcutIconCandidates('https://github.com/V-IOLE-T');
   const urls = candidates.map(candidate => candidate.url);
 
-  assert.ok(urls.some(url => url.startsWith('https://ico.codelife.cc/faviconV2?')));
-  assert.ok(urls.includes('https://github.com/favicon.ico'));
-  assert.ok(urls.includes('https://github.com/apple-touch-icon.png'));
-  assert.ok(urls.some(url => url.includes('www.google.com/s2/favicons')));
-  assert.equal(new Set(urls).size, urls.length);
+  assert.deepEqual(urls, ['https://www.google.com/s2/favicons?domain=github.com&sz=32']);
+});
+
+test('getShortcutSiteIconData prefers matching open tab favicon before Google fallback', () => {
+  const originalRuntime = globalThis.TabHarborDashboardRuntime;
+  globalThis.TabHarborDashboardRuntime = {
+    getOpenTabs: () => [
+      {
+        url: 'https://github.com/V-IOLE-T/tab-harbor',
+        favIconUrl: 'https://github.githubassets.com/favicons/favicon.svg',
+      },
+    ],
+  };
+
+  try {
+    const iconData = getShortcutSiteIconData({ url: 'https://github.com/V-IOLE-T' }, 'GitHub', 32);
+    assert.equal(iconData.hostname, 'github.com');
+    assert.equal(iconData.src, 'https://github.githubassets.com/favicons/favicon.svg');
+    assert.equal(iconData.fallbackSrc, 'https://www.google.com/s2/favicons?domain=github.com&sz=32');
+    assert.equal(iconData.fallbackLabel, 'G');
+  } finally {
+    globalThis.TabHarborDashboardRuntime = originalRuntime;
+  }
+});
+
+test('getShortcutIconTone returns stable quiet tone ids for hostnames', () => {
+  const first = getShortcutIconTone('www.github.com');
+  const second = getShortcutIconTone('github.com');
+
+  assert.equal(first, second);
+  assert.match(first, /^(amber|sage|mist|rose|slate)$/);
+  assert.equal(getShortcutIconTone(''), 'neutral');
 });
 
 test('getCodelifeFaviconUrl follows the iTab favicon service shape', () => {
