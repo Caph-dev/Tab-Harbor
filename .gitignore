@@ -5,6 +5,11 @@
 extension/config.local.js
 
 # Agent / skill caches (per-machine, never committed)
+.trellis/
+.cursor/
+.claude/
+.codex/
+.agents/
 
 .superpowers/
 skills-lock.json
