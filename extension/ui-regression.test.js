@@ -171,7 +171,9 @@ test('drawer sync store is loaded before drawer manager and runtime startup', ()
 });
 
 test('quick shortcuts sync store is loaded before theme controls and popup shortcuts', () => {
+  assert.match(html, /<script src="favicon-cache\.js"><\/script>\s*<script src="icon-utils\.js"><\/script>/);
   assert.match(html, /<script src="quick-shortcuts-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>\s*<script src="i18n\.js"><\/script>\s*<script src="ui-helpers\.js"><\/script>\s*<script src="theme-controls\.js"><\/script>/);
+  assert.match(popupHtml, /<script src="\.\.\/favicon-cache\.js"><\/script>\s*<script src="\.\.\/icon-utils\.js"><\/script>/);
   assert.match(popupHtml, /<script src="\.\.\/list-order\.js"><\/script>\s*<script src="\.\.\/quick-shortcuts-sync-store\.js"><\/script>\s*<script src="\.\.\/background-image\.js"><\/script>[\s\S]*<script src="\.\.\/theme-controls\.js"><\/script>/);
   assert.match(quickShortcutsSyncJs, /tabHarbor\.shortcut\.item\./);
   assert.match(quickShortcutsSyncJs, /tabHarbor\.shortcut\.order/);
@@ -200,6 +202,13 @@ test('background keeps the toolbar badge empty', () => {
   assert.doesNotMatch(backgroundJs, /String\(count\)/);
 });
 
+test('background persists favicon cache from tab favicon updates', () => {
+  assert.match(backgroundJs, /importScripts\('favicon-cache\.js'\)/);
+  assert.match(backgroundJs, /'favicon-cache-fetch'/);
+  assert.match(backgroundJs, /changeInfo\.favIconUrl/);
+  assert.match(backgroundJs, /seedFaviconCacheFromOpenTabs/);
+});
+
 test('manifest keeps only permissions required by the shipped runtime', () => {
   const manifest = fs.readFileSync(path.join(__dirname, 'manifest.json'), 'utf8');
 
@@ -207,6 +216,7 @@ test('manifest keeps only permissions required by the shipped runtime', () => {
   assert.match(manifest, /"storage"/);
   assert.match(manifest, /"search"/);
   assert.match(manifest, /"clipboardRead"/);
+  assert.match(manifest, /"host_permissions":\s*\[[\s\S]*"https:\/\/\*\/\*"/);
   assert.doesNotMatch(manifest, /"activeTab"/);
 });
 

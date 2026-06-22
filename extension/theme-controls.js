@@ -28,6 +28,22 @@ const {
   reorderQuickShortcuts: themeStoreReorderQuickShortcuts,
 } = globalThis.TabHarborQuickShortcutsSyncStore || {};
 
+const {
+  STORAGE_KEY: themeFaviconStorageKey,
+} = globalThis.TabHarborFaviconCache || {};
+
+let themeFaviconRefreshListenerAttached = false;
+
+function ensureThemeFaviconRefreshListener() {
+  if (themeFaviconRefreshListenerAttached || !themeFaviconStorageKey) return;
+  if (!chrome?.storage?.onChanged?.addListener) return;
+  themeFaviconRefreshListenerAttached = true;
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local' || !changes?.[themeFaviconStorageKey]) return;
+    void renderQuickShortcuts();
+  });
+}
+
 let themeMenuOpen = false;
 let shortcutEditorState = {
   open: false,
@@ -795,15 +811,26 @@ function getOpenTabFavIconUrlForShortcut(shortcutUrl) {
   const shortcutHostname = getShortcutIconSearchHostname(shortcutUrl);
   if (!normalizedShortcutUrl && !shortcutHostname) return '';
 
+  const faviconCache = globalThis.TabHarborFaviconCache;
+  const pickLiveFavicon = favIconUrl => {
+    const value = String(favIconUrl || '').trim();
+    if (!value) return '';
+    if (faviconCache?.isUsableLiveFaviconUrl) {
+      return faviconCache.isUsableLiveFaviconUrl(value) ? value : '';
+    }
+    return /^https?:\/\//i.test(value) ? value : '';
+  };
+
   const exactMatch = tabs.find(tab => (
     tab?.favIconUrl && normalizeShortcutUrl(tab.url) === normalizedShortcutUrl
   ));
-  if (exactMatch?.favIconUrl) return exactMatch.favIconUrl;
+  const exactLive = pickLiveFavicon(exactMatch?.favIconUrl);
+  if (exactLive) return exactLive;
 
   const domainMatch = shortcutHostname ? tabs.find(tab => (
     tab?.favIconUrl && getShortcutIconSearchHostname(tab.url) === shortcutHostname
   )) : null;
-  return domainMatch?.favIconUrl || '';
+  return pickLiveFavicon(domainMatch?.favIconUrl);
 }
 
 function getShortcutSiteIconData(shortcut, label = '', size = 32) {
@@ -1784,7 +1811,10 @@ function renderQuickShortcutCard(shortcut) {
   const safeId = themeEscapeHtmlAttribute ? themeEscapeHtmlAttribute(shortcut.id) : shortcut.id.replace(/"/g, '&quot;');
   const safeUrl = themeEscapeHtmlAttribute ? themeEscapeHtmlAttribute(shortcut.url) : shortcut.url.replace(/"/g, '&quot;');
   const iconTone = getShortcutIconTone(iconData.hostname);
-  const customIcon = normalizeShortcutIcon(shortcut.icon);
+  const storedIconKind = String(shortcut.iconKind || '').trim();
+  const customIcon = storedIconKind === 'site'
+    ? { value: '', kind: '' }
+    : normalizeShortcutIcon(shortcut.icon);
   const iconMask = shortcut.iconMask === 'rounded' ? 'rounded' : 'none';
   const iconStyle = getQuickShortcutIconStyleAttribute(themePreferences);
   const iconErrorFallback = (customIcon.kind === 'image' || customIcon.kind === 'svg') ? (faviconUrl || fallbackUrl) : fallbackUrl;
@@ -1864,11 +1894,28 @@ function renderQuickShortcutAddCard() {
   `;
 }
 
+function warmupQuickShortcutFavicons(shortcuts = []) {
+  const faviconCache = globalThis.TabHarborFaviconCache;
+  if (!faviconCache?.scheduleFaviconWarmup || !Array.isArray(shortcuts)) return;
+
+  for (const shortcut of shortcuts) {
+    const url = String(shortcut?.url || '').trim();
+    if (!url) continue;
+    const iconKind = String(shortcut?.iconKind || '').trim();
+    const customIcon = normalizeShortcutIcon(shortcut?.icon || '');
+    if (iconKind && iconKind !== 'site') continue;
+    if (customIcon.kind && customIcon.kind !== 'site' && customIcon.kind !== '') continue;
+    faviconCache.scheduleFaviconWarmup({ url, favIconUrl: '' });
+  }
+}
+
 async function renderQuickShortcuts() {
+  ensureThemeFaviconRefreshListener();
   const list = document.getElementById('quickTabsList');
   if (!list) return;
 
   const shortcuts = await getQuickShortcuts();
+  warmupQuickShortcutFavicons(shortcuts);
   list.innerHTML = `${shortcuts.map(renderQuickShortcutCard).join('')}${renderQuickShortcutAddCard()}`;
   syncQuickShortcutAutoStretchImages(list);
 }
@@ -2765,6 +2812,7 @@ globalThis.TabOutThemeControls = {
   normalizeQuickShortcuts,
   normalizeThemePreferences,
   removeQuickShortcutById,
+  renderQuickShortcuts,
   saveQuickShortcutOrder,
   saveQuickShortcuts,
   syncPopupTheme,

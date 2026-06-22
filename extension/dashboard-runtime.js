@@ -1804,10 +1804,10 @@ async function renderStaticDashboard(options = {}) {
   else clearHitokotoDisplay();
 
   renderThemeMenu();
-  await renderQuickShortcuts();
 
   // --- Fetch tabs ---
   await fetchOpenTabs();
+  await renderQuickShortcuts();
   const realTabs = getRealTabs();
   await loadSessionGroups(realTabs.map(tab => tab.id));
   await loadGroupOrder();
@@ -3169,6 +3169,10 @@ function setupImageErrorHandlers() {
 async function initializeDashboardRuntime() {
   injectDynamicAnimationStyles();
   await loadThemePreferences();
+  const { initFaviconCache: runtimeInitFaviconCache } = globalThis.TabHarborFaviconCache || {};
+  if (typeof runtimeInitFaviconCache === 'function') {
+    await runtimeInitFaviconCache();
+  }
   if (typeof runtimeInitQuickShortcutsSync === 'function') {
     await runtimeInitQuickShortcutsSync();
   }

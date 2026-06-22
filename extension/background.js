@@ -11,6 +11,44 @@ try {
   console.warn('[tab-harbor bg] Local backup module failed to load:', error);
 }
 
+try {
+  importScripts('favicon-cache.js');
+} catch (error) {
+  console.warn('[tab-harbor bg] Favicon cache module failed to load:', error);
+}
+
+const faviconCacheApi = globalThis.TabHarborFaviconCache;
+
+function rememberTabFavicon(tab) {
+  if (!faviconCacheApi?.fetchAndStoreFavicon) return;
+  const url = tab?.url || tab?.pendingUrl || '';
+  if (!url) return;
+
+  const hostname = faviconCacheApi.normalizeFaviconHostname(url);
+  if (!faviconCacheApi.isCacheableFaviconHostname?.(hostname)) return;
+
+  const favIconUrl = String(tab?.favIconUrl || '').trim();
+  const sourceUrl = faviconCacheApi.isPersistableFaviconUrl?.(favIconUrl) ? favIconUrl : '';
+
+  void faviconCacheApi.initFaviconCache().then(() => faviconCacheApi.fetchAndStoreFavicon({
+    hostname,
+    sourceUrl,
+    pageUrl: url,
+  }));
+}
+
+async function seedFaviconCacheFromOpenTabs() {
+  if (!chrome.tabs?.query || !faviconCacheApi?.rememberFaviconCandidate) return;
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      rememberTabFavicon(tab);
+    }
+  } catch (error) {
+    console.warn('[tab-harbor bg] Favicon cache seed failed:', error);
+  }
+}
+
 const TAB_HARBOR_BACKGROUND_DEBUG = false;
 const LOCAL_BACKUP_DAILY_ALARM_NAME = 'tab-harbor-local-backup-daily';
 const LOCAL_BACKUP_PENDING_ALARM_NAME = 'tab-harbor-local-backup-pending';
@@ -205,8 +243,14 @@ async function notifyTabHarborPages() {
         debugLog(`[tab-harbor bg] Notified tab ${tab.id}`);
         successCount++;
       } catch (err) {
-        // Tab might be closed or not ready, ignore
-        console.warn(`[tab-harbor bg] Failed to notify tab ${tab.id}:`, err.message);
+        // Tab closed, still loading, or chrome://newtab without a live listener yet — expected.
+        const message = String(err?.message || err);
+        const benign = /Receiving end does not exist|Could not establish connection/i.test(message);
+        if (!benign) {
+          console.warn(`[tab-harbor bg] Failed to notify tab ${tab.id}:`, message);
+        } else {
+          debugLog(`[tab-harbor bg] Skipped notify tab ${tab.id} (no listener):`, message);
+        }
       }
     }
 
@@ -217,10 +261,28 @@ async function notifyTabHarborPages() {
 }
 
 // Update badge when the extension is first installed
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.action !== 'favicon-cache-fetch' || !faviconCacheApi?.fetchAndStoreFavicon) {
+    return false;
+  }
+
+  void faviconCacheApi.fetchAndStoreFavicon({
+    hostname: message.hostname,
+    sourceUrl: message.sourceUrl,
+    pageUrl: message.pageUrl,
+  }).then(result => sendResponse(result)).catch(() => {
+    sendResponse({ ok: false, reason: 'handler-error' });
+  });
+  return true;
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   updateBadge();
   ensureLocalBackupAlarm();
   scheduleLocalBackup();
+  if (faviconCacheApi?.initFaviconCache) {
+    void faviconCacheApi.initFaviconCache().then(() => seedFaviconCacheFromOpenTabs());
+  }
 });
 
 // Update badge when Chrome starts up
@@ -228,6 +290,9 @@ chrome.runtime.onStartup.addListener(() => {
   updateBadge();
   ensureLocalBackupAlarm();
   void scheduleLocalBackupIfStale();
+  if (faviconCacheApi?.initFaviconCache) {
+    void faviconCacheApi.initFaviconCache().then(() => seedFaviconCacheFromOpenTabs());
+  }
 });
 
 chrome.alarms?.onAlarm?.addListener(alarm => {
@@ -247,8 +312,9 @@ chrome.storage?.onChanged?.addListener((changes, areaName) => {
 });
 
 // Update badge and notify Tab Harbor pages whenever a tab is opened
-chrome.tabs.onCreated.addListener(() => {
+chrome.tabs.onCreated.addListener(tab => {
   updateBadge();
+  rememberTabFavicon(tab);
   notifyTabHarborPages();
 });
 
@@ -259,7 +325,11 @@ chrome.tabs.onRemoved.addListener(() => {
 });
 
 // Update badge and notify Tab Harbor pages when a tab's URL changes (e.g. navigating to/from chrome://)
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.favIconUrl) {
+    rememberTabFavicon({ ...tab, favIconUrl: changeInfo.favIconUrl });
+  }
+
   // Only notify on status or URL changes, not title/favicon updates
   if (!changeInfo.status && !changeInfo.url) return;
   updateBadge();
@@ -272,3 +342,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 updateBadge();
 ensureLocalBackupAlarm();
 void scheduleLocalBackupIfStale();
+if (faviconCacheApi?.initFaviconCache) {
+  void faviconCacheApi.initFaviconCache().then(() => seedFaviconCacheFromOpenTabs());
+}

@@ -3,6 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+require('./favicon-cache.js');
+
 const {
   escapeHtmlAttribute,
   getFallbackLabel,
@@ -10,6 +12,8 @@ const {
   getGroupIcon,
   getIconSources,
 } = require('./icon-utils.js');
+
+const { applyCacheState } = require('./favicon-cache.js');
 
 test('getIconSources prefers real favicon before domain fallback', () => {
   const iconData = getIconSources({
@@ -45,4 +49,22 @@ test('escapeHtmlAttribute protects custom tooltip text', () => {
     escapeHtmlAttribute('ChatGPT "Projects" & Notes'),
     'ChatGPT &quot;Projects&quot; &amp; Notes'
   );
+});
+
+test('getIconSources uses persisted favicon cache when tab favicon is absent', () => {
+  applyCacheState({
+    entries: {
+      'chatgpt.com': {
+        dataUrl: 'data:image/webp;base64,CACHED',
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  const iconData = getIconSources({
+    url: 'https://chatgpt.com/c/test',
+  }, 32);
+
+  assert.equal(iconData.sources[0], 'data:image/webp;base64,CACHED');
+  assert.match(iconData.sources[1], /google\.com\/s2\/favicons/);
 });

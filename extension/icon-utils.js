@@ -50,13 +50,26 @@
     const hostname = getHostname(url);
     const sources = [];
 
-    if (favIconUrl) sources.push(favIconUrl);
+    const faviconCache = globalScope.TabHarborFaviconCache;
+    const liveFaviconUrl = faviconCache?.isUsableLiveFaviconUrl?.(favIconUrl)
+      ? favIconUrl
+      : (faviconCache?.isPersistableFaviconUrl?.(favIconUrl) ? favIconUrl : '');
+
+    if (liveFaviconUrl) sources.push(liveFaviconUrl);
     if (hostname) sources.push(getGoogleFaviconUrl(hostname, size));
 
-    return {
-      hostname,
-      sources,
-    };
+    const base = { hostname, sources };
+    if (!faviconCache?.enrichIconSources) {
+      return base;
+    }
+
+    const enriched = faviconCache.enrichIconSources(base, size);
+    if (faviconCache.scheduleFaviconWarmup) {
+      faviconCache.scheduleFaviconWarmup({ url, favIconUrl: liveFaviconUrl });
+    } else if (favIconUrl && faviconCache.rememberFaviconCandidate) {
+      faviconCache.rememberFaviconCandidate({ url, favIconUrl });
+    }
+    return enriched;
   }
 
   function getGroupIcon(group, label, size = 32) {

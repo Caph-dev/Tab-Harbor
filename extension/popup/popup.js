@@ -56,6 +56,7 @@ globalThis._popupIcons = popupIcons;
 const POPUP_REFRESH_KEYS = new Set([
   'quickShortcuts',
   'tabHarbor.shortcut.order',
+  'tabHarbor.favicon.cache',
   'sessionGroups',
   'groupOrder',
   'groupTabOrder',
@@ -797,6 +798,10 @@ function handlePopupGroupNavImageError(event) {
 }
 
 async function refreshPopup() {
+  const faviconCache = globalThis.TabHarborFaviconCache;
+  if (faviconCache?.initFaviconCache) {
+    await faviconCache.initFaviconCache();
+  }
   if (popupTheme.loadThemePreferences) {
     await popupTheme.loadThemePreferences();
   }
