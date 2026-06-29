@@ -707,8 +707,9 @@ test('interactive controls keep button semantics and reduced-motion support', ()
 });
 
 test('drawer detail escapes todo title and description before injecting HTML', () => {
-  assert.match(drawerJs, /<h3>\$\{drawerEscapeHtml \? drawerEscapeHtml\(todo\.title\) : todo\.title\}<\/h3>/);
-  assert.match(drawerJs, /drawerEscapeHtml \? drawerEscapeHtml\(todo\.description \|\| 'Add a note when this task needs more context\.'\) : \(todo\.description \|\| 'Add a note when this task needs more context\.'\)/);
+  assert.match(drawerJs, /<h3>\$\{drawerEscapeHtml \? drawerEscapeHtml\(todo\.title\) : String\(todo\.title\)\.replace\(/);
+  assert.match(drawerJs, /drawerEscapeHtml \? drawerEscapeHtml\(todo\.description \|\| 'Add a note when this task needs more context\.'\) : String\(todo\.description \|\| 'Add a note when this task needs more context\.'\)\.replace\(/);
+  assert.ok(drawerJs.includes(`replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')`));
 });
 
 test('theme state uses separate mode and palette preferences', () => {
