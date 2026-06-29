@@ -90,7 +90,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(', ');
 
 const THEME_MODE_ORDER = ['system', 'light', 'dark'];
-const THEME_PALETTE_ORDER = ['paper', 'sage', 'mist', 'blush'];
+const THEME_PALETTE_ORDER = ['paper', 'ivory', 'mist', 'blush'];
 const VALID_THEME_MODES = new Set(THEME_MODE_ORDER);
 const VALID_THEME_PALETTES = new Set(THEME_PALETTE_ORDER);
 const SHORTCUT_ICON_SEARCH_TIMEOUT = 2600;
@@ -119,7 +119,7 @@ const THEME_MODE_LABEL_KEYS = {
 };
 const LEGACY_THEME_MIGRATION = {
   paper: { mode: 'light', paletteId: 'paper' },
-  sage: { mode: 'light', paletteId: 'sage' },
+  sage: { mode: 'light', paletteId: 'ivory' },
   mist: { mode: 'light', paletteId: 'mist' },
   blush: { mode: 'light', paletteId: 'blush' },
   midnight: { mode: 'dark', paletteId: 'mist' },
@@ -134,7 +134,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#ded4c8',
       '--muted': '#81776e',
       '--accent-amber': '#9d6840',
-      '--accent-sage': '#5d7560',
+      '--accent-chamomile': '#b89863',
       '--accent-slate': '#66727d',
       '--accent-rose': '#9d655c',
       '--workspace-accent': '#7e5d3e',
@@ -152,7 +152,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#2b241d',
       '--muted': '#94877a',
       '--accent-amber': '#c28a5a',
-      '--accent-sage': '#7f9a7f',
+      '--accent-chamomile': '#c9ad75',
       '--accent-slate': '#84909a',
       '--accent-rose': '#bd7770',
       '--workspace-accent': '#b4865e',
@@ -165,44 +165,44 @@ const THEME_FAMILIES = {
       '--card-bg': '#211b15',
     },
   },
-  sage: {
-    name: 'Sage',
-    meta: 'Garden archive',
+  ivory: {
+    name: 'Ivory',
+    meta: 'Cool ivory',
     light: {
-      '--ink': '#172018',
-      '--paper': '#edf2e9',
-      '--warm-gray': '#d9e2d3',
-      '--muted': '#73806f',
-      '--accent-amber': '#8a7447',
-      '--accent-sage': '#52745a',
-      '--accent-slate': '#61746f',
-      '--accent-rose': '#956a61',
-      '--workspace-accent': '#55765a',
-      '--workspace-accent-soft': '#dce9da',
-      '--workspace-accent-border': '#a8bea4',
-      '--workspace-accent-contrast': '#f8fcf5',
-      '--status-active': '#466b4e',
-      '--status-cooling': '#8a7447',
-      '--status-abandoned': '#95645e',
-      '--card-bg': '#fbfdf8',
+      '--ink': '#1d2024',
+      '--paper': '#f6f7f9',
+      '--warm-gray': '#e1e4e8',
+      '--muted': '#7e848c',
+      '--accent-amber': '#9a8054',
+      '--accent-chamomile': '#a39c78',
+      '--accent-slate': '#5f6b78',
+      '--accent-rose': '#9c7072',
+      '--workspace-accent': '#6b7480',
+      '--workspace-accent-soft': '#e3e6ea',
+      '--workspace-accent-border': '#aab1ba',
+      '--workspace-accent-contrast': '#fafbfc',
+      '--status-active': '#557a6e',
+      '--status-cooling': '#9a8054',
+      '--status-abandoned': '#9c6a6e',
+      '--card-bg': '#fcfdfe',
     },
     dark: {
-      '--ink': '#dfe8dc',
-      '--paper': '#121a14',
-      '--warm-gray': '#232c23',
-      '--muted': '#758171',
-      '--accent-amber': '#ad9763',
-      '--accent-sage': '#82a083',
-      '--accent-slate': '#839590',
-      '--accent-rose': '#ba8177',
-      '--workspace-accent': '#8fb08c',
-      '--workspace-accent-soft': '#243024',
-      '--workspace-accent-border': '#53684f',
-      '--workspace-accent-contrast': '#101711',
-      '--status-active': '#8fb08c',
-      '--status-cooling': '#c0a66a',
-      '--status-abandoned': '#cf8b80',
-      '--card-bg': '#1a231a',
+      '--ink': '#dde1e6',
+      '--paper': '#101216',
+      '--warm-gray': '#1e2127',
+      '--muted': '#868c95',
+      '--accent-amber': '#ad9670',
+      '--accent-chamomile': '#ada579',
+      '--accent-slate': '#8995a2',
+      '--accent-rose': '#b87c7f',
+      '--workspace-accent': '#9aa3ac',
+      '--workspace-accent-soft': '#1f2228',
+      '--workspace-accent-border': '#586069',
+      '--workspace-accent-contrast': '#0e1012',
+      '--status-active': '#7aa099',
+      '--status-cooling': '#ad9670',
+      '--status-abandoned': '#b87a7e',
+      '--card-bg': '#171a1e',
     },
   },
   mist: {
@@ -214,7 +214,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#d7e0e4',
       '--muted': '#75818a',
       '--accent-amber': '#8d7358',
-      '--accent-sage': '#607a6f',
+      '--accent-chamomile': '#b5966a',
       '--accent-slate': '#4f6d80',
       '--accent-rose': '#986b70',
       '--workspace-accent': '#4f6f88',
@@ -232,7 +232,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#222c33',
       '--muted': '#6f7a82',
       '--accent-amber': '#b09472',
-      '--accent-sage': '#84a092',
+      '--accent-chamomile': '#c4a576',
       '--accent-slate': '#83a5b8',
       '--accent-rose': '#bd8185',
       '--workspace-accent': '#8eb0c2',
@@ -254,7 +254,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#e5d6d1',
       '--muted': '#8f7974',
       '--accent-amber': '#9b6e52',
-      '--accent-sage': '#6c7b66',
+      '--accent-chamomile': '#b8926a',
       '--accent-slate': '#6b7378',
       '--accent-rose': '#a86462',
       '--workspace-accent': '#9b646b',
@@ -272,7 +272,7 @@ const THEME_FAMILIES = {
       '--warm-gray': '#2d2322',
       '--muted': '#897571',
       '--accent-amber': '#bd8964',
-      '--accent-sage': '#87987e',
+      '--accent-chamomile': '#c8a47a',
       '--accent-slate': '#858e94',
       '--accent-rose': '#c78682',
       '--workspace-accent': '#c0838a',
@@ -852,7 +852,7 @@ function getShortcutIconTone(hostname = '') {
   const cleanHost = String(hostname || '').replace(/^www\./, '').toLowerCase();
   if (!cleanHost) return 'neutral';
 
-  const toneIds = ['amber', 'sage', 'mist', 'rose', 'slate'];
+  const toneIds = ['amber', 'chamomile', 'mist', 'rose', 'slate'];
   let hash = 0;
   for (let index = 0; index < cleanHost.length; index += 1) {
     hash = (hash + cleanHost.charCodeAt(index) * (index + 1)) % toneIds.length;

@@ -10,7 +10,7 @@
   --warm-gray: #ded4c8;
   --muted: #81776e;
   --accent-amber: #9d6840;
-  --accent-sage: #5d7560;
+  --accent-chamomile: #b89863;
   --accent-slate: #66727d;
   --accent-rose: #9d655c;
   --workspace-accent: #7e5d3e;
@@ -626,11 +626,11 @@ body.theme-tone-dark::before {
     );
 }
 
-.quick-shortcut-card[data-icon-tone="sage"] .quick-shortcut-icon-wrap {
+.quick-shortcut-card[data-icon-tone="chamomile"] .quick-shortcut-icon-wrap {
   background:
     linear-gradient(145deg,
       color-mix(in srgb, var(--card-bg) 88%, white 12%),
-      color-mix(in srgb, var(--accent-sage) 10%, var(--card-bg) 90%)
+      color-mix(in srgb, var(--accent-chamomile) 10%, var(--card-bg) 90%)
     );
 }
 
@@ -1298,7 +1298,7 @@ body.theme-tone-dark .deferred-shell {
 }
 
 .theme-toggle-switch.is-active {
-  background: var(--accent-sage);
+  background: var(--accent-chamomile);
 }
 
 .theme-toggle-switch.is-active::after {
@@ -2004,8 +2004,8 @@ body.group-dragging .group-nav-button {
 }
 
 .chip-save:hover {
-  color: var(--accent-sage);
-  background: rgba(90, 122, 98, 0.08);
+  color: var(--accent-chamomile);
+  background: rgba(184, 152, 99, 0.08);
 }
 
 .chip-close:hover {
@@ -2120,14 +2120,14 @@ body.group-dragging .group-nav-button {
 }
 
 .action-btn.save-tabs {
-  border-color: rgba(90, 122, 98, 0.3);
-  color: var(--accent-sage);
-  background: rgba(90, 122, 98, 0.04);
+  border-color: rgba(184, 152, 99, 0.3);
+  color: var(--accent-chamomile);
+  background: rgba(184, 152, 99, 0.04);
 }
 
 .action-btn.save-tabs:hover {
-  background: rgba(90, 122, 98, 0.1);
-  border-color: var(--accent-sage);
+  background: rgba(184, 152, 99, 0.1);
+  border-color: var(--accent-chamomile);
 }
 
 .action-btn.danger {
@@ -2569,11 +2569,11 @@ body.group-dragging .group-nav-button {
     );
 }
 
-.shortcut-editor-preview[data-icon-tone="sage"] {
+.shortcut-editor-preview[data-icon-tone="chamomile"] {
   background:
     linear-gradient(145deg,
       color-mix(in srgb, var(--card-bg) 88%, white 12%),
-      color-mix(in srgb, var(--accent-sage) 10%, var(--card-bg) 90%)
+      color-mix(in srgb, var(--accent-chamomile) 10%, var(--card-bg) 90%)
     );
 }
 
@@ -2878,12 +2878,12 @@ body.dashboard-refreshing footer {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(90, 122, 98, 0.1);
-  border: 1.5px solid rgba(90, 122, 98, 0.3);
+  background: rgba(184, 152, 99, 0.1);
+  border: 1.5px solid rgba(184, 152, 99, 0.3);
 
-  /* Soft sage glow */
-  box-shadow: 0 0 0 8px rgba(90, 122, 98, 0.05),
-              0 0 0 16px rgba(90, 122, 98, 0.03);
+  /* Soft chamomile glow */
+  box-shadow: 0 0 0 8px rgba(184, 152, 99, 0.05),
+              0 0 0 16px rgba(184, 152, 99, 0.03);
 
   display: flex;
   align-items: center;
@@ -2896,7 +2896,7 @@ body.dashboard-refreshing footer {
 .empty-checkmark svg {
   width: 26px;
   height: 26px;
-  color: var(--accent-sage);
+  color: var(--accent-chamomile);
   stroke-width: 2.5;
 }
 
@@ -2926,7 +2926,7 @@ body.dashboard-refreshing footer {
    UPDATE BANNER
    Appears at the very top of the page when a new version is available.
    Intentionally thin and unobtrusive — it's informational, not urgent.
-   The warm sage green palette feels calm and positive ("new thing!"),
+   The warm chamomile gold palette feels calm and positive ("new thing!"),
    contrasting with the amber/rose warning tones used elsewhere.
    ================================================================ */
 
@@ -2937,9 +2937,9 @@ body.dashboard-refreshing footer {
   justify-content: space-between;
   gap: 12px;
 
-  /* Sage green tint — matches accent-sage but very light */
-  background: linear-gradient(135deg, rgba(90, 122, 98, 0.05), rgba(90, 122, 98, 0.10));
-  border: 1px solid rgba(90, 122, 98, 0.22);
+  /* Chamomile gold tint — matches accent-chamomile but very light */
+  background: linear-gradient(135deg, rgba(184, 152, 99, 0.05), rgba(184, 152, 99, 0.10));
+  border: 1px solid rgba(184, 152, 99, 0.22);
   border-radius: 8px;
   padding: 10px 16px;
 
@@ -2967,7 +2967,7 @@ body.dashboard-refreshing footer {
 .update-banner-icon {
   width: 16px;
   height: 16px;
-  color: var(--accent-sage);
+  color: var(--accent-chamomile);
   flex-shrink: 0;
   opacity: 0.85;
 }
@@ -2988,13 +2988,13 @@ body.dashboard-refreshing footer {
   flex-shrink: 0;
 }
 
-/* "Update now" button — small, filled, sage green */
+/* "Update now" button — small, filled, chamomile gold */
 .update-banner-btn {
   font-family: 'Public Sans', sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: #fff;
-  background: var(--accent-sage);
+  background: var(--accent-chamomile);
   border: none;
   border-radius: 5px;
   padding: 5px 12px;
@@ -3005,7 +3005,7 @@ body.dashboard-refreshing footer {
 }
 
 .update-banner-btn:hover {
-  background: #4a6952; /* slightly darker sage */
+  background: #8a6d3f; /* slightly darker chamomile */
 }
 
 .update-banner-btn:disabled {
@@ -3386,12 +3386,12 @@ body.dashboard-refreshing footer {
 }
 
 .deferred-checkbox:hover {
-  border-color: var(--accent-sage);
+  border-color: var(--accent-chamomile);
 }
 
 .deferred-checkbox:checked {
-  background: var(--accent-sage);
-  border-color: var(--accent-sage);
+  background: var(--accent-chamomile);
+  border-color: var(--accent-chamomile);
 }
 
 /* Checkmark inside the checkbox */
@@ -3557,8 +3557,8 @@ body.page-chip-list-dragging .chip-reorder-handle {
 }
 
 .deferred-restore:hover {
-  color: var(--accent-sage);
-  background: rgba(90, 122, 98, 0.08);
+  color: var(--accent-chamomile);
+  background: rgba(184, 152, 99, 0.08);
 }
 
 /* Checked-off item — strikethrough + faded */
@@ -3820,8 +3820,8 @@ body.page-chip-list-dragging .chip-reorder-handle {
 }
 
 .todo-checkbox:checked {
-  background: var(--accent-sage);
-  border-color: var(--accent-sage);
+  background: var(--accent-chamomile);
+  border-color: var(--accent-chamomile);
 }
 
 .todo-checkbox:checked::after {
@@ -4219,7 +4219,7 @@ body.page-chip-list-dragging .chip-reorder-handle {
 .tab-picker-added-icon {
   width: 24px;
   height: 24px;
-  color: var(--accent-sage);
+  color: var(--accent-chamomile);
   flex-shrink: 0;
   opacity: 0.7;
 }
@@ -4313,7 +4313,7 @@ body.page-chip-list-dragging .chip-reorder-handle {
   --warm-gray: #ded4c8;
   --muted: #81776e;
   --accent-amber: #9d6840;
-  --accent-sage: #5d7560;
+  --accent-chamomile: #b89863;
   --accent-slate: #66727d;
   --accent-rose: #9d655c;
   --workspace-accent: #7e5d3e;
@@ -4825,8 +4825,8 @@ select:focus-visible,
 }
 
 .action-btn.save-tabs {
-  border-color: color-mix(in srgb, var(--accent-sage) 28%, transparent);
-  background: color-mix(in srgb, var(--accent-sage) 9%, var(--card-bg) 91%);
+  border-color: color-mix(in srgb, var(--accent-chamomile) 28%, transparent);
+  background: color-mix(in srgb, var(--accent-chamomile) 9%, var(--card-bg) 91%);
 }
 
 .toast {
@@ -4945,11 +4945,11 @@ select:focus-visible,
 }
 
 .empty-checkmark {
-  background: color-mix(in srgb, var(--accent-sage) 12%, var(--card-bg) 88%);
-  border-color: color-mix(in srgb, var(--accent-sage) 32%, transparent);
+  background: color-mix(in srgb, var(--accent-chamomile) 12%, var(--card-bg) 88%);
+  border-color: color-mix(in srgb, var(--accent-chamomile) 32%, transparent);
   box-shadow:
-    0 0 0 10px color-mix(in srgb, var(--accent-sage) 5%, transparent),
-    0 16px 32px color-mix(in srgb, var(--accent-sage) 10%, transparent);
+    0 0 0 10px color-mix(in srgb, var(--accent-chamomile) 5%, transparent),
+    0 16px 32px color-mix(in srgb, var(--accent-chamomile) 10%, transparent);
 }
 
 .empty-title {

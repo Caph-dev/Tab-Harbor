@@ -240,11 +240,11 @@ body.popup-shell {
     );
 }
 
-.popup-shortcut-card[data-icon-tone="sage"] .quick-shortcut-icon-wrap {
+.popup-shortcut-card[data-icon-tone="chamomile"] .quick-shortcut-icon-wrap {
   background:
     linear-gradient(145deg,
       color-mix(in srgb, var(--card-bg) 88%, white 12%),
-      color-mix(in srgb, var(--accent-sage) 10%, var(--card-bg) 90%)
+      color-mix(in srgb, var(--accent-chamomile) 10%, var(--card-bg) 90%)
     );
 }
 

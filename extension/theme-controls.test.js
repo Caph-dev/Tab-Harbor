@@ -55,7 +55,7 @@ test('normalizeThemePreferences migrates legacy midnight to dark mist', () => {
 test('normalizeThemePreferences migrates legacy light theme ids to light palette families', () => {
   const result = normalizeThemePreferences({ themeId: 'sage' });
   assert.equal(result.mode, 'light');
-  assert.equal(result.paletteId, 'sage');
+  assert.equal(result.paletteId, 'ivory');
 });
 
 test('normalizeThemePreferences keeps explicit mode and palette values', () => {
@@ -323,7 +323,7 @@ test('getShortcutIconTone returns stable quiet tone ids for hostnames', () => {
   const second = getShortcutIconTone('github.com');
 
   assert.equal(first, second);
-  assert.match(first, /^(amber|sage|mist|rose|slate)$/);
+  assert.match(first, /^(amber|chamomile|mist|rose|slate)$/);
   assert.equal(getShortcutIconTone(''), 'neutral');
 });
 

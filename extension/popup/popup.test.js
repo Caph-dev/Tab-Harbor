@@ -36,7 +36,7 @@ globalThis.window = { close: () => {} };
 globalThis.TabOutThemeControls = {
   filterRealTabs: tabs => Array.isArray(tabs) ? tabs : [],
   getQuickShortcutIconStylePreferences: () => ({ iconSize: 34, iconMaskRadius: 9 }),
-  getShortcutIconTone: hostname => hostname ? 'sage' : 'neutral',
+  getShortcutIconTone: hostname => hostname ? 'chamomile' : 'neutral',
 };
 globalThis.TabOutIconUtils = {
   escapeHtmlAttribute: v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
@@ -423,7 +423,7 @@ test('renderShortcutCard renders site icon source and tone', () => {
     const html = renderShortcutCard(shortcut, 0);
 
     assert.ok(html.includes('data-icon-source="site"'));
-    assert.ok(html.includes('data-icon-tone="sage"'));
+    assert.ok(html.includes('data-icon-tone="chamomile"'));
     assert.ok(html.includes('src="https://www.google.com/s2/favicons?domain=github.com&sz=32"'));
   } finally {
     globalThis._popupIcons.getIconSources = originalGetIconSources;
