@@ -10,9 +10,10 @@ extension/config.local.js
 .claude/
 .codex/
 .agents/
-
 .superpowers/
 skills-lock.json
+.agents/
+.github/
 
 # Editor / IDE metadata
 .idea/
