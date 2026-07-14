@@ -446,7 +446,7 @@ body.theme-tone-dark::before {
 }
 
 .header-title-row {
-  --header-greeting-size: 40px;
+  --header-greeting-size: var(--th-size-8);
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -4751,18 +4751,22 @@ select:focus-visible,
 }
 
 .header-title-row {
-  --header-greeting-size: clamp(42px, 6vw, 74px);
+  --header-greeting-size: clamp(
+    var(--th-size-8),
+    4.5vw,
+    calc(var(--th-size-12) + var(--th-space-4))
+  );
   align-items: flex-end;
   gap: 14px 18px;
   flex-wrap: wrap;
 }
 
 .header-left h1 {
-  max-width: 10ch;
+  max-width: none;
   line-height: 0.92;
   letter-spacing: -0.055em;
-  text-wrap: balance;
-  white-space: normal;
+  text-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .header-left .date {

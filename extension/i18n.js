@@ -29,9 +29,9 @@
     en: {
       emptyTitle: 'Inbox zero, but for tabs.',
       emptySubtitle: "You're free.",
-      greetingMorning: 'Good morning',
-      greetingAfternoon: 'Good afternoon',
-      greetingEvening: 'Good evening',
+      greetingMorning: 'Morning',
+      greetingAfternoon: 'Afternoon',
+      greetingEvening: 'Evening',
       timeJustNow: 'just now',
       timeMinAgo: '{count} min ago',
       timeHourAgo: '1 hr ago',

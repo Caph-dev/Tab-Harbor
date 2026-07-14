@@ -34,6 +34,21 @@ test('move menu keeps hidden state until explicitly opened', () => {
   );
 });
 
+test('English greetings stay concise and on one line', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(i18nJs, /greetingMorning:\s*'Morning'/);
+  assert.match(i18nJs, /greetingAfternoon:\s*'Afternoon'/);
+  assert.match(i18nJs, /greetingEvening:\s*'Evening'/);
+  assert.match(helperJs, /uiT\('greetingMorning'\) : 'Morning'/);
+  assert.match(helperJs, /uiT\('greetingAfternoon'\) : 'Afternoon'/);
+  assert.match(helperJs, /uiT\('greetingEvening'\) : 'Evening'/);
+  assert.match(
+    css,
+    /\.header-left h1\s*\{\s*max-width:\s*none;[\s\S]*?text-wrap:\s*nowrap;[\s\S]*?white-space:\s*nowrap;\s*\}/
+  );
+});
+
 test('mission card allows move menu to overflow outside the card', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
@@ -560,7 +575,8 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(css, /--workspace-chip-text:/);
   assert.match(css, /--workspace-chip-border:/);
   assert.match(css, /body\s*\{[\s\S]*background-image:\s*var\(--page-custom-background\)/);
-  assert.match(css, /\.header-title-row\s*\{[\s\S]*--header-greeting-size:\s*40px;[\s\S]*align-items:\s*center;[\s\S]*gap:\s*18px;[\s\S]*flex-wrap:\s*nowrap;/);
+  assert.match(css, /\.header-title-row\s*\{[\s\S]*--header-greeting-size:\s*var\(--th-size-8\);[\s\S]*align-items:\s*center;[\s\S]*gap:\s*18px;[\s\S]*flex-wrap:\s*nowrap;/);
+  assert.match(css, /--header-greeting-size:\s*clamp\(\s*var\(--th-size-8\),\s*4\.5vw,\s*calc\(var\(--th-size-12\) \+ var\(--th-space-4\)\)\s*\);/);
   assert.match(css, /\.header-left h1\s*\{[\s\S]*margin-bottom:\s*0;[\s\S]*white-space:\s*nowrap;/);
   assert.match(css, /\.header-left h1\s*\{[\s\S]*line-height:\s*1;/);
   assert.match(css, /\.header-left \.date\s*\{[\s\S]*font-family:\s*'Test Tiempos Text', '方正FW筑紫A老明朝 简', serif;[\s\S]*font-size:\s*20px;[\s\S]*line-height:\s*1;[\s\S]*transform:\s*translateY\(1px\);/);

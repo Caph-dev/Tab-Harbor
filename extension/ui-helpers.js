@@ -325,9 +325,9 @@ function timeAgo(dateStr) {
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return uiT ? uiT('greetingMorning') : 'Good morning';
-  if (hour < 17) return uiT ? uiT('greetingAfternoon') : 'Good afternoon';
-  return uiT ? uiT('greetingEvening') : 'Good evening';
+  if (hour < 12) return uiT ? uiT('greetingMorning') : 'Morning';
+  if (hour < 17) return uiT ? uiT('greetingAfternoon') : 'Afternoon';
+  return uiT ? uiT('greetingEvening') : 'Evening';
 }
 
 function getDateDisplay() {
