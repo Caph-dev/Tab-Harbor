@@ -115,6 +115,7 @@
   --th-size-11: 44px;
   --th-size-12: 48px;
   --th-control-height-compact: var(--th-size-8);
+  --th-control-height-inline: calc(var(--th-size-7) - var(--th-space-1));
   --th-control-height-sm: var(--th-size-8);
   --th-control-height-action: var(--th-size-9);
   --th-control-height-md: var(--th-size-10);
@@ -1841,21 +1842,27 @@ body.group-dragging .group-nav-button {
 }
 
 .mission-top {
-  margin-bottom: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--th-space-4);
+  margin-bottom: var(--th-space-2);
 }
 
 .mission-heading {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
+  row-gap: var(--th-space-1);
 }
 
 .mission-name {
   font-weight: 600;
   font-size: 15px;
+  line-height: var(--th-line-height-snug);
   color: var(--ink);
   letter-spacing: -0.01em;
 }
@@ -1890,12 +1897,14 @@ body.group-dragging .group-nav-button {
   align-items: center;
   gap: 4px;
   font-size: 10px;
+  line-height: var(--th-line-height-snug);
   font-weight: 600;
   color: var(--workspace-chip-text);
   background: var(--workspace-chip-bg);
   border: 1px solid var(--workspace-chip-border);
   padding: 2px 6px;
   border-radius: 3px;
+  box-sizing: border-box;
 }
 
 .open-tabs-badge.is-duplicate {
@@ -2189,11 +2198,30 @@ body.group-dragging .group-nav-button {
   line-height: var(--th-line-height-snug);
 }
 
-.mission-actions .action-btn.close-tabs {
-  margin-left: auto;
+.mission-actions .action-btn.dedup-tabs {
+  min-height: var(--th-control-height-inline);
+  padding: var(--th-space-1) var(--th-space-5);
+  border-color: color-mix(in srgb, var(--accent-amber) 30%, var(--workspace-chip-border) 70%);
+  border-radius: var(--th-control-radius);
+  background: color-mix(in srgb, var(--accent-amber) 7%, var(--card-bg) 93%);
+  color: color-mix(in srgb, var(--accent-amber) 76%, var(--ink) 24%);
+  line-height: var(--th-line-height-snug);
+  box-shadow: none;
 }
 
-body .mission-actions .action-btn.close-tabs:hover {
+.mission-actions .action-btn.dedup-tabs:hover {
+  border-color: color-mix(in srgb, var(--accent-amber) 52%, var(--workspace-accent-border) 48%);
+  background: color-mix(in srgb, var(--accent-amber) 12%, var(--card-bg) 88%);
+  color: color-mix(in srgb, var(--accent-amber) 88%, var(--ink) 12%);
+  transform: none;
+}
+
+.mission-top > .action-btn.close-tabs {
+  align-self: center;
+  white-space: nowrap;
+}
+
+body .mission-top > .action-btn.close-tabs:hover {
   border-color: color-mix(in srgb, var(--status-abandoned) 32%, var(--workspace-chip-border) 68%);
   background: color-mix(in srgb, var(--status-abandoned) 8%, var(--card-bg) 92%);
   color: color-mix(in srgb, var(--status-abandoned) 88%, var(--ink) 12%);
@@ -2248,9 +2276,10 @@ body .mission-actions .action-btn.close-tabs:hover {
   border-color: var(--workspace-chip-border);
   color: var(--workspace-chip-text);
   background: color-mix(in srgb, var(--workspace-chip-bg) 92%, var(--card-bg) 8%);
-  border-radius: 8px;
-  min-height: 28px;
-  padding: 4px 10px;
+  border-radius: var(--th-control-radius);
+  min-height: var(--th-control-height-inline);
+  padding: var(--th-space-1) var(--th-space-5);
+  line-height: var(--th-line-height-snug);
 }
 
 .action-btn.close-tabs:hover {

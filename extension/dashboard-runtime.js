@@ -1618,14 +1618,12 @@ function renderDomainCard(group) {
   if (hasDupes) {
     const dupeUrlsEncoded = dupeUrls.map(([url]) => encodeURIComponent(url)).join(',');
     actionsHtml += `
-      <button class="action-btn" type="button" data-action="dedup-keep-one" data-dupe-urls="${dupeUrlsEncoded}">
+      <button class="action-btn dedup-tabs" type="button" data-action="dedup-keep-one" data-dupe-urls="${dupeUrlsEncoded}">
         ${runtimeT
           ? runtimeT('closedDuplicatesCount', { count: totalExtras, suffix: totalExtras !== 1 ? 's' : '' })
           : `Close ${totalExtras} duplicate${totalExtras !== 1 ? 's' : ''}`}
       </button>`;
   }
-  actionsHtml += closeAllButton;
-
   return `
     <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'}" data-domain-id="${stableId}" data-group-id="${group.domain}">
       <div class="status-bar"></div>
@@ -1636,9 +1634,10 @@ function renderDomainCard(group) {
             ${tabBadge}
             ${dupeBadge}
           </div>
+          ${closeAllButton}
         </div>
         <div class="mission-pages">${pageChips}</div>
-        <div class="actions mission-actions">${actionsHtml}</div>
+        ${actionsHtml ? `<div class="actions mission-actions">${actionsHtml}</div>` : ''}
       </div>
       <div class="mission-meta">
         <div class="mission-page-count">${tabCount}</div>
