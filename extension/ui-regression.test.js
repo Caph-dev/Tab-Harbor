@@ -9,13 +9,18 @@ const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
 const appEntryJs = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 const backgroundJs = fs.readFileSync(path.join(__dirname, 'background.js'), 'utf8');
 const runtimeJs = fs.readFileSync(path.join(__dirname, 'dashboard-runtime.js'), 'utf8');
+const adaptiveIconJs = fs.readFileSync(path.join(__dirname, 'adaptive-icon.js'), 'utf8');
+const themeCatalogJs = fs.readFileSync(path.join(__dirname, 'theme-catalog.js'), 'utf8');
 const themeJs = fs.readFileSync(path.join(__dirname, 'theme-controls.js'), 'utf8');
+const quickShortcutsControllerJs = fs.readFileSync(path.join(__dirname, 'quick-shortcuts-controller.js'), 'utf8');
 const drawerJs = fs.readFileSync(path.join(__dirname, 'drawer-manager.js'), 'utf8');
 const drawerSyncJs = fs.readFileSync(path.join(__dirname, 'drawer-sync-store.js'), 'utf8');
 const quickShortcutsSyncJs = fs.readFileSync(path.join(__dirname, 'quick-shortcuts-sync-store.js'), 'utf8');
 const helperJs = fs.readFileSync(path.join(__dirname, 'ui-helpers.js'), 'utf8');
 const popupJs = fs.readFileSync(path.join(__dirname, 'popup', 'popup.js'), 'utf8');
 const popupHtml = fs.readFileSync(path.join(__dirname, 'popup', 'popup.html'), 'utf8');
+const popupCss = fs.readFileSync(path.join(__dirname, 'popup', 'popup.css'), 'utf8');
+const i18nJs = fs.readFileSync(path.join(__dirname, 'i18n.js'), 'utf8');
 const configJs = fs.readFileSync(path.join(__dirname, 'config.js'), 'utf8');
 const configLoaderJs = fs.readFileSync(path.join(__dirname, 'config-loader.js'), 'utf8');
 const appJs = [appEntryJs, runtimeJs, themeJs, drawerJs, drawerSyncJs, quickShortcutsSyncJs, helperJs].join('\n');
@@ -36,6 +41,73 @@ test('mission card allows move menu to overflow outside the card', () => {
     css,
     /\.mission-card\s*\{[\s\S]*overflow:\s*visible;/
   );
+});
+
+test('mission lists do not add a shadow mask behind their cards', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(css, /#openTabsMissions,\s*#openTabsMissions::before,\s*#openTabsMissions::after\s*\{[\s\S]*box-shadow:\s*none;/);
+  assert.match(css, /#openTabsMissions > \.mission-card,[\s\S]*#openTabsMissions > \.mission-card:focus-within\s*\{[\s\S]*box-shadow:\s*none;/);
+});
+
+test('drawer clips its rounded surface without a square shadow layer', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(css, /\.deferred-column\s*\{[\s\S]*contain:\s*layout style;/);
+  assert.doesNotMatch(css, /\.deferred-column\s*\{[^}]*contain:[^;}]*paint/);
+  assert.match(css, /\.deferred-shell\s*\{[\s\S]*border-radius:[^;]+;[\s\S]*box-shadow:\s*none;[\s\S]*overflow:\s*hidden auto;/);
+});
+
+test('curated styles keep group navigation geometry internally consistent', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(css, /body\[data-theme-style='ivory-index'\] :is\([\s\S]*\.group-nav-fallback[\s\S]*\)\s*\{\s*border-radius:\s*var\(--th-radius-sm\);/);
+  assert.match(css, /body\[data-theme-style='ivory-index'\] \.mission-name\s*\{\s*letter-spacing:\s*-0\.012em;/);
+  assert.match(css, /body\[data-theme-style='botanical-folio'\] :is\([\s\S]*\.group-nav-placeholder[\s\S]*\)\s*\{\s*border-radius:\s*var\(--th-radius-md\);/);
+  assert.match(css, /body\[data-theme-style='porcelain-atlas'\] :is\([\s\S]*#openTabsGroupNav \.header-theme-trigger[\s\S]*\)\s*\{\s*border-radius:\s*var\(--th-radius-sm\);/);
+  assert.match(css, /body\[data-theme-style='nocturne-observatory'\] :is\([\s\S]*\.group-nav-fallback[\s\S]*\)\s*\{\s*border-radius:\s*var\(--th-radius-pill\);/);
+  assert.match(css, /body\[data-theme-style='vermilion-seal'\] :is\([\s\S]*#openTabsGroupNav \.header-theme-trigger[\s\S]*\)\s*\{\s*border-radius:\s*var\(--th-radius-sm\);/);
+});
+
+test('shared visual primitives and semantic roles are available to components', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+  const requiredTokens = [
+    '--th-space-1',
+    '--th-space-12',
+    '--th-control-height-compact',
+    '--th-control-hit-target',
+    '--th-border-width-hairline',
+    '--th-font-size-body',
+    '--th-type-control-size',
+    '--th-icon-control',
+    '--th-shadow-item-rest',
+    '--th-shadow-floating-panel',
+    '--th-duration-fast',
+    '--th-motion-drawer-duration',
+  ];
+
+  for (const token of requiredTokens) {
+    assert.match(css, new RegExp(`${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\s*`));
+  }
+
+  assert.match(css, /\.th-control\s*\{[\s\S]*min-height:\s*var\(--th-control-height-md\);/);
+  assert.match(css, /\.th-control\s*\{[\s\S]*font-size:\s*var\(--th-type-control-size\);/);
+  assert.match(css, /\.th-icon-control\s*\{[\s\S]*width:\s*var\(--th-control-hit-target\);/);
+  assert.match(css, /\.th-field-shell\s*\{[\s\S]*border-radius:\s*var\(--th-field-radius\);/);
+});
+
+test('popup consumes shared semantics while preserving compact density', () => {
+  assert.match(popupCss, /body\.popup-shell\s*\{[\s\S]*box-shadow:\s*var\(--th-popup-shell-shadow\);/);
+  assert.match(popupCss, /\.popup-tab-row\s*\{[\s\S]*box-shadow:\s*var\(--th-popup-row-shadow\);/);
+  assert.match(popupCss, /\.popup-tab-row\s*\{[\s\S]*border:\s*var\(--th-border-width\) solid var\(--th-popup-row-border\);/);
+  assert.match(popupCss, /\.popup-refresh-btn \.btn-svg\s*\{[\s\S]*width:\s*var\(--th-popup-icon-md\);/);
+  assert.match(popupCss, /body\[data-theme-style='botanical-folio'\]\s*\{[\s\S]*--th-popup-row-border:/);
+  assert.match(popupCss, /body\[data-theme-style='porcelain-atlas'\]\s*\{[\s\S]*--th-popup-row-shadow:\s*none;/);
+  assert.match(popupCss, /body\[data-theme-style='nocturne-observatory'\]\s*\{[\s\S]*--th-popup-segment-active-shadow:/);
+  assert.match(popupCss, /body\[data-theme-style='vermilion-seal'\]\s*\{[\s\S]*--th-popup-row-shadow:/);
+  assert.doesNotMatch(popupCss, /data-theme-style='(?:editorial-grid|archive-ledger)'/);
+  assert.doesNotMatch(popupCss, /rgba\(26,\s*22,\s*19/);
+  assert.doesNotMatch(popupCss, /transition:\s*all\b/);
 });
 
 test('mission card is raised above sibling cards while move menu is open', () => {
@@ -84,18 +156,105 @@ test('icon fallback handling avoids inline event handlers', () => {
   assert.match(helperJs, /setImageFallbackAttributes/);
 });
 
-test('popup group nav keeps visible fallback labels and popup-local image fallback handling', () => {
+test('popup icons keep visible fallback labels and shared popup-local image fallback handling', () => {
   assert.match(popupJs, /class="group-nav-fallback"/);
+  assert.match(popupJs, /class="quick-shortcut-fallback"/);
   assert.match(popupJs, /data-fallback-src=/);
-  assert.match(popupJs, /document\.addEventListener\('error', handlePopupGroupNavImageError, true\)/);
+  assert.match(popupJs, /const isShortcutIcon = target\.classList\.contains\('quick-shortcut-icon'\)/);
+  assert.match(popupJs, /document\.addEventListener\('error', handlePopupImageError, true\)/);
 });
 
-test('popup auto-refreshes when tabs and local storage change', () => {
-  assert.match(popupJs, /chrome\.tabs\?\.onCreated\?\.addListener\(schedule\)/);
-  assert.match(popupJs, /chrome\.tabs\?\.onMoved\?\.addListener\(schedule\)/);
-  assert.match(popupJs, /chrome\.tabGroups\?\.onUpdated\?\.addListener\(schedule\)/);
+test('adaptive shortcut icon pipeline is shared across dashboard and popup', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(html, /<script src="adaptive-icon\.js"><\/script>\s*<script src="favicon-cache\.js"><\/script>\s*<script src="icon-utils\.js"><\/script>/);
+  assert.match(popupHtml, /<script src="\.\.\/adaptive-icon\.js"><\/script>\s*<script src="\.\.\/favicon-cache\.js"><\/script>\s*<script src="\.\.\/icon-utils\.js"><\/script>/);
+  assert.match(adaptiveIconJs, /createAdaptiveIconViewModel/);
+  assert.match(themeJs, /themeCreateAdaptiveIconViewModel/);
+  assert.match(themeJs, /data-icon-treatment="\$\{adaptiveViewModel\.treatment\}"/);
+  assert.match(themeJs, /data-icon-plate="\$\{adaptiveViewModel\.plateShape\}"/);
+  assert.match(themeJs, /data-icon-fit="\$\{adaptiveViewModel\.artworkFit\}"/);
+  assert.match(popupJs, /popupAdaptiveIcons[\s\S]*createAdaptiveIconViewModel/);
+  assert.match(popupJs, /data-icon-treatment="\$\{adaptiveViewModel\.treatment\}"/);
+  assert.match(popupJs, /data-icon-plate="\$\{adaptiveViewModel\.plateShape\}"/);
+  assert.match(popupJs, /data-icon-fit="\$\{adaptiveViewModel\.artworkFit\}"/);
+  assert.match(helperJs, /card\.dataset\.iconTreatment = 'glyph'/);
+  assert.match(helperJs, /card\.dataset\.iconPlate = 'circle'/);
+  assert.match(helperJs, /card\.dataset\.iconFit = 'contain'/);
+  assert.match(popupJs, /card\.dataset\.iconTreatment = 'glyph'/);
+  assert.match(popupJs, /card\.dataset\.iconPlate = 'circle'/);
+  assert.match(popupJs, /card\.dataset\.iconFit = 'contain'/);
+  assert.match(css, /\.quick-shortcut-card\.has-icon-plate-circle/);
+  assert.match(css, /\.quick-shortcut-card\.has-icon-plate-none/);
+  assert.match(css, /\.has-icon-treatment-tile/);
+  assert.match(css, /\.has-icon-treatment-disc/);
+  assert.match(css, /\.has-icon-treatment-fill/);
+  assert.match(popupCss, /\.popup-shortcut-card\.has-icon-plate-circle/);
+  assert.match(popupCss, /\.popup-shortcut-card\.has-icon-plate-none/);
+  assert.match(popupCss, /\.has-icon-treatment-tile/);
+  assert.match(popupCss, /\.has-icon-treatment-disc/);
+  assert.match(popupCss, /\.has-icon-treatment-fill/);
+  assert.match(html, /data-i18n="shortcutIconFittingLabel"/);
+  assert.match(i18nJs, /shortcutIconFittingHelp: 'Auto balances transparent marks and full-tile website icons\.'/);
+  assert.match(i18nJs, /shortcutIconFittingHelp: '自动平衡透明标志和铺满画面的站点图标。'/);
+});
+
+test('dashboard shortcut controller owns rendering and explicit action gestures', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(html, /quick-shortcuts-controller\.js"><\/script>\s*<script src="theme-controls\.js"/);
+  assert.match(themeJs, /quickShortcutsController = controllerApi\.createController\(/);
+  assert.match(themeJs, /return quickShortcutsController\.refresh\('facade'\)/);
+  assert.match(quickShortcutsControllerJs, /root\.addEventListener\('contextmenu', onContextMenu\)/);
+  assert.match(quickShortcutsControllerJs, /event\.key === 'ContextMenu' \|\| \(event\.key === 'F10' && event\.shiftKey\)/);
+  assert.match(quickShortcutsControllerJs, /root\.addEventListener\('auxclick', onAuxClick, true\)/);
+  assert.doesNotMatch(themeJs, /document\.addEventListener\('contextmenu', handleQuickShortcutActionsContextMenu\)/);
+  assert.match(themeJs, /data-shortcut-command="reorder"/);
+  assert.match(themeJs, /role="group"[\s\S]*hidden inert/);
+  assert.match(
+    css,
+    /\.quick-shortcut-card\.is-actions-open \.quick-shortcut-actions\s*\{[\s\S]*?pointer-events:\s*auto;/
+  );
+  assert.doesNotMatch(css, /\.quick-shortcut-card:(?:hover|focus-within) \.quick-shortcut-actions/);
+});
+
+test('shortcut reordering is an opt-in personalized preference', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(runtimeJs, /id="themeShortcutReorderingToggle"/);
+  assert.match(runtimeJs, /runtimeT\('allowShortcutReordering'\)/);
+  assert.match(themeJs, /quickShortcutReorderingEnabled:\s*next\.quickShortcutReorderingEnabled === true/);
+  assert.match(themeJs, /const allowReordering = themePreferences\.quickShortcutReorderingEnabled/);
+  assert.match(themeJs, /allowReordering \? `<button class="quick-shortcut-drag-handle"/);
+  assert.match(quickShortcutsControllerJs, /const DEFAULT_DRAG_THRESHOLD = 8/);
+  assert.match(quickShortcutsControllerJs, /slotTargets: captureSlotTargets\(\)/);
+  assert.match(quickShortcutsControllerJs, /const preview = drag\.sourceCard\.cloneNode\(true\)/);
+  assert.match(css, /\.quick-shortcut-drag-preview\s*\{[\s\S]*position:\s*fixed;/);
+  assert.match(css, /\.quick-shortcut-card\.is-drag-slot\s*\{/);
+  assert.match(themeJs, /quick-shortcut-actions\$\{allowReordering \? '' : ' is-two-action'\}/);
+  assert.match(css, /\.quick-shortcut-actions\.is-two-action\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, 24px\);/);
+  assert.match(i18nJs, /allowShortcutReordering: 'Allow shortcut reordering'/);
+  assert.match(i18nJs, /allowShortcutReordering: '允许拖动快捷图标'/);
+});
+
+test('popup scopes refreshes and filters noisy tab updates', () => {
+  assert.match(popupJs, /chrome\.tabs\?\.onCreated\?\.addListener\(scheduleTabs\)/);
+  assert.match(popupJs, /chrome\.tabs\?\.onMoved\?\.addListener\(scheduleTabs\)/);
+  assert.match(popupJs, /chrome\.tabs\?\.onUpdated\?\.addListener\(handleTabUpdated\)/);
+  assert.match(popupJs, /const relevantFields = \['url', 'title', 'favIconUrl', 'groupId'\]/);
+  assert.match(popupJs, /chrome\.tabGroups\?\.onUpdated\?\.addListener\(scheduleTabs\)/);
   assert.match(popupJs, /chrome\.storage\?\.onChanged\?\.addListener\(handlePopupStorageChanged\)/);
   assert.match(popupJs, /const POPUP_REFRESH_KEYS = new Set/);
+  assert.match(popupJs, /const popupPendingRefreshScopes = new Set\(\)/);
+  assert.match(popupJs, /const popupQueuedRefreshScopes = new Set\(\)/);
+});
+
+test('popup parallelizes initial resources and avoids duplicate close refreshes', () => {
+  assert.match(popupJs, /async function refreshPopup\(scopes[\s\S]*await Promise\.all\(\[/);
+  assert.match(popupJs, /refreshPopupSafely\(POPUP_INITIAL_REFRESH_SCOPES\)/);
+  assert.match(popupJs, /await refreshPopupSafely\(POPUP_FULL_REFRESH_SCOPES\)/);
+  assert.match(popupJs, /await chrome\.tabs\.remove\(tabId\);\s*schedulePopupRefresh\(\[POPUP_REFRESH_SCOPE\.TABS\], 0\);/);
+  assert.doesNotMatch(popupJs, /await chrome\.tabs\.remove\(tabId\);\s*await refreshPopup\(/);
 });
 
 test('popup opens tabs from other windows in the current window instead of focusing the old window', () => {
@@ -133,6 +292,7 @@ test('manifest action keeps the popup entry wired to popup html', () => {
 });
 
 test('theme controls expose popup helpers without dropping main theme runtime exports', () => {
+  assert.match(themeCatalogJs, /globalThis\.TabHarborThemeCatalog/);
   assert.match(themeJs, /getResolvedThemeDefinition/);
   assert.match(themeJs, /getResolvedTone/);
   assert.match(themeJs, /loadThemePreferences/);
@@ -167,12 +327,18 @@ test('drawer sync store is loaded before drawer manager and runtime startup', ()
   assert.match(drawerSyncJs, /chrome\?\.storage\?\.\[areaName\]/);
   assert.match(drawerSyncJs, /tabHarbor\.saved\.item\./);
   assert.match(drawerSyncJs, /tabHarbor\.todo\.item\./);
-  assert.match(runtimeJs, /await runtimeInitDrawerSync\(\)/);
+  assert.match(runtimeJs, /const startupResults = await Promise\.all\(\[[\s\S]*runtimeInitDrawerSync\(\)/);
+  assert.match(runtimeJs, /const tabsSnapshot = await fetchOpenTabs\(\)/);
+  assert.match(runtimeJs, /await renderDashboard\(\{ tabsSnapshot, sessionGroupsLoaded \}\)/);
+  assert.match(runtimeJs, /Array\.isArray\(options\.tabsSnapshot\)[\s\S]*openTabs = options\.tabsSnapshot;[\s\S]*await fetchOpenTabs\(\)/);
+  assert.match(runtimeJs, /let dashboardTabChangeListenerAttached = false;[\s\S]*if \(dashboardTabChangeListenerAttached\) return;/);
+  assert.match(runtimeJs, /let dashboardRuntimeInitializationPromise = null;[\s\S]*if \(!dashboardRuntimeInitializationPromise\)/);
+  assert.match(drawerJs, /applyDeferredShellState\(\);[\s\S]*if \(!deferredPanelOpen\) return;[\s\S]*const shouldRenderSaved/);
 });
 
 test('quick shortcuts sync store is loaded before theme controls and popup shortcuts', () => {
   assert.match(html, /<script src="favicon-cache\.js"><\/script>\s*<script src="icon-utils\.js"><\/script>/);
-  assert.match(html, /<script src="quick-shortcuts-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>\s*<script src="i18n\.js"><\/script>\s*<script src="ui-helpers\.js"><\/script>\s*<script src="theme-controls\.js"><\/script>/);
+  assert.match(html, /<script src="quick-shortcuts-sync-store\.js"><\/script>\s*<script src="background-image\.js"><\/script>\s*<script src="i18n\.js"><\/script>\s*<script src="ui-helpers\.js"><\/script>\s*<script src="theme-catalog\.js"><\/script>\s*<script src="quick-shortcuts-controller\.js"><\/script>\s*<script src="theme-controls\.js"><\/script>/);
   assert.match(popupHtml, /<script src="\.\.\/favicon-cache\.js"><\/script>\s*<script src="\.\.\/icon-utils\.js"><\/script>/);
   assert.match(popupHtml, /<script src="\.\.\/list-order\.js"><\/script>\s*<script src="\.\.\/quick-shortcuts-sync-store\.js"><\/script>\s*<script src="\.\.\/background-image\.js"><\/script>[\s\S]*<script src="\.\.\/theme-controls\.js"><\/script>/);
   assert.match(quickShortcutsSyncJs, /tabHarbor\.shortcut\.item\./);
@@ -182,6 +348,14 @@ test('quick shortcuts sync store is loaded before theme controls and popup short
   assert.match(themeJs, /tabharbor-quick-shortcuts-sync-updated/);
   assert.match(runtimeJs, /tabharbor-quick-shortcuts-sync-error/);
   assert.match(popupJs, /key\.startsWith\('tabHarbor\.shortcut\.'\)/);
+});
+
+test('theme catalog loads before theme controls on dashboard and popup surfaces', () => {
+  assert.match(html, /<script src="theme-catalog\.js"><\/script>\s*<script src="quick-shortcuts-controller\.js"><\/script>\s*<script src="theme-controls\.js"><\/script>/);
+  assert.match(popupHtml, /<script src="\.\.\/theme-catalog\.js"><\/script>\s*<script src="\.\.\/theme-controls\.js"><\/script>/);
+  assert.match(themeJs, /data-style-id/);
+  assert.match(runtimeJs, /dataset\.styleId/);
+  assert.match(themeJs, /body\.dataset\.themeStyle/);
 });
 
 test('optional local config is loaded safely before app mount', () => {
@@ -216,6 +390,7 @@ test('manifest keeps only permissions required by the shipped runtime', () => {
   assert.match(manifest, /"storage"/);
   assert.match(manifest, /"search"/);
   assert.match(manifest, /"clipboardRead"/);
+  assert.match(manifest, /"favicon"/);
   assert.match(manifest, /"host_permissions":\s*\[[\s\S]*"https:\/\/\*\/\*"/);
   assert.doesNotMatch(manifest, /"activeTab"/);
 });
@@ -232,7 +407,7 @@ test('footer credits show version and Caph repository links', () => {
 
   assert.match(
     html,
-    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/Walaxy\/tab-harbor"[\s\S]*>Tab Harbor<\/a>[\s\S]*id="footerVersion">v—<\/span> by <a[\s\S]*href="https:\/\/github\.com\/Walaxy\/tab-harbor"[\s\S]*>Caph<\/a>/
+    /class="footer-credit"[\s\S]*href="https:\/\/github\.com\/Caph-dev\/Tab-Harbor"[\s\S]*>Tab Harbor<\/a>[\s\S]*id="footerVersion">v—<\/span> by <a[\s\S]*href="https:\/\/github\.com\/Caph-dev\/Tab-Harbor"[\s\S]*>Caph<\/a>/
   );
   assert.match(appEntryJs, /function syncFooterVersion\(\)/);
   assert.match(appEntryJs, /globalThis\.chrome\?\.runtime\?\.getManifest\?\.\(\)\.version/);
@@ -288,7 +463,7 @@ test('deferred drawer styles and behavior are wired up', () => {
   assert.match(css, /\.deferred-overlay\.visible\s*\{/);
   assert.match(css, /\.deferred-column\.open\s*\{/);
   assert.match(css, /\.deferred-column\s*\{[\s\S]*width:\s*min\(50vw,\s*calc\(100vw - 40px\)\);/);
-  assert.match(css, /--drawer-transition-duration:\s*140ms;/);
+  assert.match(css, /--drawer-transition-duration:\s*var\(--th-motion-drawer-duration\);/);
   assert.match(css, /\.deferred-column\s*\{[\s\S]*transition:\s*opacity var\(--drawer-transition-duration\) ease,\s*transform var\(--drawer-transition-duration\) ease;/);
   assert.match(css, /\.deferred-column\s*\{[\s\S]*contain:\s*layout paint style;/);
   assert.match(css, /\.deferred-column\s*\{[\s\S]*will-change:\s*transform,\s*opacity;/);
@@ -324,6 +499,7 @@ test('theme menu styles and custom background layer are defined', () => {
 
   assert.match(css, /--page-custom-background:/);
   assert.match(css, /--custom-surface-opacity:/);
+  assert.match(runtimeJs, /id="themeTransparencyRange"[\s\S]*min="0"[\s\S]*max="100"[\s\S]*step="1"/);
   assert.match(css, /--floating-surface-opacity:/);
   assert.match(css, /--panel-surface-opacity:/);
   assert.match(css, /--tooltip-surface:/);
@@ -377,7 +553,7 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(appJs, /id="drawerSpeedRange"/);
   assert.match(appJs, /id="drawerSpeedValue"/);
   assert.match(appJs, /runtimeT \? runtimeT\('drawerSpeed'\) : 'Drawer speed'/);
-  assert.match(themeJs, /Math\.min\(60, Math\.max\(2, Math\.round\(rawOpacity\)\)\)/);
+  assert.match(themeJs, /Math\.min\(100, Math\.max\(0, Math\.round\(rawOpacity\)\)\)/);
   assert.match(themeJs, /const DRAWER_SPEED_DEFAULT = 4/);
   assert.match(themeJs, /--drawer-transition-duration/);
   assert.match(appJs, /e\.target\.id === 'drawerSpeedRange'/);
@@ -385,10 +561,10 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(appJs, /disposition:\s*'CURRENT_TAB'/);
   assert.match(appJs, /e\.target\.id !== 'headerSearchForm'/);
   assert.match(appJs, /runDefaultSearch\(query\)/);
-  assert.match(themeJs, /'--workspace-accent':/);
-  assert.match(themeJs, /'--workspace-accent-soft':/);
-  assert.match(themeJs, /'--workspace-accent-border':/);
-  assert.match(themeJs, /'--workspace-accent-contrast':/);
+  assert.match(themeCatalogJs, /'--workspace-accent':/);
+  assert.match(themeCatalogJs, /'--workspace-accent-soft':/);
+  assert.match(themeCatalogJs, /'--workspace-accent-border':/);
+  assert.match(themeCatalogJs, /'--workspace-accent-contrast':/);
   assert.match(css, /\.mission-card\s*\{[\s\S]*background:\s*color-mix\(in srgb, var\(--card-bg\) calc\(var\(--custom-surface-opacity\) \+ 68%\), transparent\);/);
   assert.match(css, /\.section-count\s*\{[\s\S]*color:\s*var\(--workspace-chip-text\);/);
   assert.match(css, /\.group-nav-button\s*\{[\s\S]*width:\s*40px;[\s\S]*height:\s*40px;/);
@@ -399,13 +575,14 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(css, /\.tab-cleanup-icon svg\s*\{[\s\S]*color:\s*var\(--theme-accent-strong\);/);
   assert.match(css, /\.tab-cleanup-btn\s*\{[\s\S]*background:\s*var\(--banner-action-bg\);[\s\S]*color:\s*var\(--banner-action-text\);/);
   assert.match(css, /\.tab-cleanup-btn:hover\s*\{[\s\S]*background:\s*var\(--banner-action-bg-hover\);/);
-  assert.match(css, /\.open-tabs-badge\s*\{[\s\S]*position:\s*relative;[\s\S]*background:\s*\n\s*linear-gradient\(180deg,[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
-  assert.match(css, /\.open-tabs-badge::before\s*\{[\s\S]*width:\s*5px;[\s\S]*height:\s*5px;[\s\S]*box-shadow:\s*0 0 0 3px/);
-  assert.match(css, /\.open-tabs-badge\.is-duplicate\s*\{[\s\S]*background:\s*var\(--workspace-chip-bg-strong\);/);
-  assert.match(css, /\.action-btn\.close-tabs\s*\{[\s\S]*position:\s*relative;[\s\S]*border-radius:\s*999px;[\s\S]*background:\s*\n\s*linear-gradient\(180deg,[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
-  assert.match(css, /\.action-btn\.close-tabs::before\s*\{[\s\S]*background:\s*linear-gradient\(180deg, color-mix\(in srgb, white 38%, transparent\), transparent\);/);
-  assert.match(css, /\.action-btn\.close-tabs:hover,\s*\.action-btn\.close-tabs:focus-visible\s*\{[\s\S]*transform:\s*translateY\(-2px\);[\s\S]*box-shadow:\s*\n\s*inset 0 1px 0/);
-  assert.match(css, /\.action-btn\.close-tabs:active\s*\{[\s\S]*transform:\s*translateY\(0\) scale\(0\.99\);/);
+  assert.match(css, /body \.open-tabs-badge\s*\{[\s\S]*background:\s*color-mix\([\s\S]*box-shadow:\s*none;/);
+  assert.match(css, /body \.open-tabs-badge::before\s*\{[\s\S]*content:\s*none;[\s\S]*box-shadow:\s*none;/);
+  assert.match(css, /body \.open-tabs-badge\.is-duplicate\s*\{[\s\S]*background:\s*color-mix\([\s\S]*box-shadow:\s*none;/);
+  assert.match(css, /body \.action-btn\.close-tabs\s*\{[\s\S]*border-radius:\s*var\(--th-control-radius\);[\s\S]*background:\s*color-mix\([\s\S]*box-shadow:\s*none;[\s\S]*transform:\s*none;/);
+  assert.match(css, /body \.action-btn\.close-tabs::before,[\s\S]*body \.action-btn\.close-tabs::after\s*\{[\s\S]*content:\s*none;[\s\S]*box-shadow:\s*none;/);
+  assert.match(css, /body \.action-btn\.close-tabs:hover\s*\{[\s\S]*background:\s*var\(--workspace-chip-bg\);[\s\S]*box-shadow:\s*none;[\s\S]*transform:\s*none;/);
+  assert.match(css, /body \.action-btn\.close-tabs:active\s*\{[\s\S]*background:\s*var\(--workspace-chip-bg-strong\);[\s\S]*transform:\s*none;/);
+  assert.match(css, /body \.action-btn\.close-tabs:focus-visible\s*\{[\s\S]*outline:\s*2px solid var\(--th-focus-ring\);[\s\S]*box-shadow:\s*none;/);
   assert.match(css, /\.deferred-shell\s*\{[\s\S]*background:\s*color-mix\(in srgb, var\(--card-bg\) var\(--panel-card-opacity\), transparent\);/);
   assert.match(css, /--tooltip-surface:\s*color-mix\(in srgb, var\(--workspace-accent-soft\) 32%, var\(--card-bg\) 68%\);/);
   assert.match(css, /\.drawer-title-btn\.is-active,\s*\.drawer-title-btn\[aria-selected="true"\]\s*\{[\s\S]*text-decoration-color:\s*var\(--drawer-tab-underline-active\);/);
@@ -417,22 +594,39 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(html, /<script src="theme-controls\.js"><\/script>/);
 });
 
+test('mission-level actions keep close group in a durable footer row', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(runtimeJs, /actionsHtml \+= closeAllButton;/);
+  assert.match(runtimeJs, /<div class="mission-pages">\$\{pageChips\}<\/div>\s*<div class="actions mission-actions">\$\{actionsHtml\}<\/div>/);
+  assert.doesNotMatch(runtimeJs, /<div class="mission-heading">[\s\S]{0,1200}\$\{closeAllButton\}/);
+  assert.doesNotMatch(css, /\.mission-top\s*\{[^}]*display:\s*flex;/);
+  assert.match(css, /\.actions\s*\{[^}]*flex-wrap:\s*wrap;/);
+  assert.match(css, /\.mission-actions\s*\{[^}]*align-items:\s*center;[^}]*width:\s*100%;[^}]*border-top:/);
+  assert.match(css, /\.mission-actions \.action-btn\s*\{[^}]*min-height:\s*var\(--th-control-height-compact\);[^}]*border-radius:\s*var\(--th-control-radius\);/);
+  assert.match(css, /\.mission-actions \.action-btn\.close-tabs\s*\{[^}]*margin-left:\s*auto;/);
+  assert.match(css, /body \.mission-actions \.action-btn\.close-tabs:hover\s*\{[^}]*var\(--status-abandoned\)/);
+});
+
 test('quick tabs area renders shortcut cards and add button hooks', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
   assert.match(css, /\.quick-tabs-grid\s*\{/);
   assert.match(css, /\.quick-tabs-grid\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(auto-fill, 76px\);[\s\S]*justify-content:\s*flex-start;/);
+  assert.match(css, /\.quick-tabs-grid\s*\{[^}]*row-gap:\s*var\(--th-space-2\);[^}]*column-gap:\s*var\(--th-space-5\);/);
   assert.match(css, /\.quick-shortcut-card\s*\{/);
   assert.match(css, /\.quick-shortcut-card\s*\{[\s\S]*border:\s*none;/);
-  assert.match(css, /\.quick-shortcut-card\s*\{[\s\S]*grid-template-rows:\s*40px auto;/);
-  assert.match(css, /\.quick-shortcut-card\s*\{[\s\S]*width:\s*76px;[\s\S]*flex:\s*0 0 76px;/);
+  assert.match(css, /\.quick-shortcut-card\s*\{[^}]*display:\s*grid;[^}]*grid-template-rows:\s*auto 24px;[^}]*width:\s*76px;[^}]*flex:\s*0 0 76px;/);
+  assert.match(css, /\.quick-shortcut-open\s*\{[^}]*grid-template-rows:\s*40px auto;/);
   assert.match(css, /\.quick-shortcut-icon-wrap\s*\{[\s\S]*border:\s*none;/);
   assert.match(css, /\.quick-shortcut-custom-glyph\s*\{/);
   assert.match(css, /\.quick-shortcut-icon-custom\s*\{/);
+  assert.match(themeJs, /<div class="quick-shortcut-actions\$\{allowReordering \? '' : ' is-two-action'\}"/);
+  assert.match(css, /\.quick-shortcut-actions\s*\{[^}]*grid-template-columns:\s*repeat\(3, 24px\);[^}]*visibility:\s*hidden;[^}]*opacity:\s*0;[^}]*pointer-events:\s*none;/);
+  assert.match(css, /\.quick-shortcut-card\.is-actions-open \.quick-shortcut-actions > button\s*\{\s*pointer-events:\s*auto;/);
+  assert.match(css, /\.quick-shortcut-card\.is-actions-open \.quick-shortcut-actions\s*\{[\s\S]*visibility:\s*visible;[\s\S]*opacity:\s*1;/);
   assert.match(css, /\.quick-shortcut-edit\s*\{/);
-  assert.match(css, /\.quick-shortcut-edit\s*\{[\s\S]*left:\s*0;[\s\S]*width:\s*18px;[\s\S]*height:\s*18px;/);
-  assert.match(css, /\.quick-shortcut-edit\s*\{[\s\S]*transform:\s*translateY\(2px\) scale\(0\.92\);/);
-  assert.match(css, /\.quick-shortcut-card:hover \.quick-shortcut-edit,[\s\S]*transform:\s*translateY\(0\) scale\(1\);/);
+  assert.match(css, /\.quick-shortcut-edit\s*\{[^}]*position:\s*static;[^}]*width:\s*24px;[^}]*height:\s*24px;[^}]*transform:\s*none;/);
   assert.match(css, /\.quick-shortcut-edit:hover,[\s\S]*border-color:\s*color-mix\(in srgb, var\(--workspace-accent-border\) 38%, transparent\);/);
   assert.match(css, /\.shortcut-editor\s*\{/);
   assert.match(css, /\.shortcut-editor\s*\{[\s\S]*inset:\s*auto 88px 24px auto;/);
@@ -464,7 +658,7 @@ test('quick tabs area renders shortcut cards and add button hooks', () => {
   assert.match(themeJs, /setShortcutEditorIconMask/);
   assert.match(themeJs, /iconMaskRadius/);
   assert.match(css, /\.quick-shortcut-remove\s*\{/);
-  assert.match(css, /\.quick-shortcut-remove\s*\{[\s\S]*right:\s*0;[\s\S]*width:\s*18px;[\s\S]*height:\s*18px;/);
+  assert.match(css, /\.quick-shortcut-remove\s*\{[^}]*position:\s*static;[^}]*width:\s*24px;[^}]*height:\s*24px;[^}]*transform:\s*none;/);
   assert.match(css, /\.quick-shortcut-remove:hover,[\s\S]*color:\s*color-mix\(in srgb, var\(--status-abandoned\) 92%, var\(--ink\) 8%\);/);
   assert.match(themeJs, /QUICK_SHORTCUTS_KEY/);
   assert.match(themeJs, /normalizeShortcutIcon/);
@@ -484,7 +678,7 @@ test('quick tabs area renders shortcut cards and add button hooks', () => {
   assert.match(themeJs, /saveShortcutEditorShortcut/);
   assert.match(themeJs, /Shortcut icon updated/);
   assert.match(themeJs, /upload-shortcut-icon/);
-  assert.match(themeJs, /edit-quick-shortcut/);
+  assert.match(themeJs, /data-shortcut-command="edit"/);
   assert.match(themeJs, /SVG icon pasted/);
   assert.match(themeJs, /temporary file reference\. Use Cmd\/Ctrl\+V instead/);
   assert.match(themeJs, /navigator\.clipboard\?\.read/);
@@ -492,8 +686,14 @@ test('quick tabs area renders shortcut cards and add button hooks', () => {
   assert.match(themeJs, /kind === 'svg' \|\| \/\^data:image\\\/\//);
   assert.match(themeJs, /renderQuickShortcuts/);
   assert.match(themeJs, /add-quick-shortcut/);
-  assert.match(themeJs, /remove-quick-shortcut/);
+  assert.match(themeJs, /data-shortcut-command="remove"/);
   assert.match(themeJs, /open-quick-shortcut/);
+  assert.match(themeJs, /<button class="quick-shortcut-open" type="button" data-action="open-quick-shortcut"/);
+  assert.match(quickShortcutsControllerJs, /function onClick\(event\)/);
+  assert.match(quickShortcutsControllerJs, /function onAuxClick\(event\)/);
+  assert.match(quickShortcutsControllerJs, /root\.addEventListener\('auxclick', onAuxClick, true\)/);
+  assert.match(quickShortcutsControllerJs, /onOpenBackground/);
+  assert.match(css, /\.quick-shortcut-open\s*\{[^}]*text-decoration:\s*none;/);
   assert.match(appJs, /openOrFocusUrl/);
   assert.match(themeJs, /customIcon\.kind === 'glyph'\s*\?\s*''/);
   assert.doesNotMatch(themeJs, /title="\$\{safeLabel\}"/);
@@ -539,48 +739,19 @@ test('quick tabs area renders shortcut cards and add button hooks', () => {
 test('quick shortcuts support drag reordering with persisted order and drag preview styling', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
-  assert.match(themeJs, /const\s*\{[\s\S]*reorderSubsetByIds:\s*themeReorderSubsetByIds,[\s\S]*\}\s*=\s*globalThis\.TabOutListOrder \|\| \{\};/);
-  assert.match(themeJs, /class="quick-shortcut-card\$\{iconMask === 'rounded' \? ' has-rounded-icon-mask' : ''\}" data-shortcut-id="\$\{safeId\}"/);
+  assert.match(themeJs, /class="quick-shortcut-card \$\{adaptiveViewModel\.cardClass\}\$\{iconMask === 'rounded' \? ' has-rounded-icon-mask' : ''\}\$\{actionsOpen \? ' is-actions-open' : ''\}" data-shortcut-id="\$\{safeId\}"/);
   assert.match(themeJs, /const safeAriaLabel = themeEscapeHtmlAttribute \? themeEscapeHtmlAttribute\(label\) : label\.replace\(\/"\/g, '&quot;'\);/);
   assert.match(themeJs, /aria-label="\$\{safeAriaLabel\}"/);
-  assert.match(themeJs, /let quickShortcutDragState = null;/);
-  assert.match(themeJs, /document\.body\.classList\.add\('quick-shortcut-list-dragging'\)/);
-  assert.match(themeJs, /quickShortcutSuppressClickUntil = Date\.now\(\) \+ 250/);
-  assert.match(themeJs, /function clampQuickShortcutDragPoint\(clientX, clientY\)/);
-  assert.match(themeJs, /const minClientX = listRect\.left \+ quickShortcutDragState\.offsetX - width \/ 2;/);
-  assert.match(themeJs, /const maxClientX = listRect\.right \+ quickShortcutDragState\.offsetX - width \/ 2;/);
-  assert.match(themeJs, /Math\.min\(Math\.max\(clientX, minClientX\), maxClientX\)/);
-  assert.match(themeJs, /function ensureQuickShortcutSlot\(\)/);
-  assert.match(themeJs, /quickShortcutSlotEl\.className = 'quick-shortcut-slot is-drag-slot';/);
-  assert.match(themeJs, /function ensureQuickShortcutGhost\(\)/);
-  assert.match(themeJs, /quickShortcutDraggedEl\.replaceWith\(quickShortcutSlotEl\)/);
-  assert.match(themeJs, /quickShortcutGhostEl\.style\.setProperty\('--drag-height'/);
-  assert.match(themeJs, /function updateDraggedQuickShortcutPosition\(clientX, clientY\)\s*\{[\s\S]*quickShortcutGhostEl\.style\.setProperty\('--drag-left'/);
-  assert.match(themeJs, /await saveQuickShortcuts\(themeReorderSubsetByIds\(/);
-  assert.match(themeJs, /function buildQuickShortcutSlotTargets\(listEl\)/);
-  assert.match(themeJs, /slotTargets:\s*buildQuickShortcutSlotTargets\(listEl\)/);
-  assert.match(themeJs, /function findQuickShortcutSlotIndex\(slotTargets, draggedCenterX, draggedCenterY\)/);
-  assert.match(themeJs, /const distance = \(dx \* dx\) \+ \(dy \* dy\);/);
-  assert.match(themeJs, /function animateQuickShortcutNode\(item, previousRect\)/);
-  assert.match(themeJs, /function settleQuickShortcutItems\(listEl, affectedIds = null\)/);
-  assert.match(themeJs, /if \(affected && !affected\.has\(key\)\) return;/);
-  assert.match(themeJs, /Math\.hypot\(deltaX, deltaY\)/);
-  assert.match(themeJs, /cubic-bezier\(0\.22, 1, 0\.36, 1\)/);
-  assert.match(themeJs, /const draggedCenterX = clampedPoint\.clientX - quickShortcutDragState\.offsetX \+ quickShortcutDragState\.width \/ 2;/);
-  assert.match(themeJs, /const draggedCenterY = clampedPoint\.clientY - quickShortcutDragState\.offsetY \+ quickShortcutDragState\.height \/ 2;/);
-  assert.match(themeJs, /const targetIndex = findQuickShortcutSlotIndex\(\s*quickShortcutDragState\.slotTargets,\s*draggedCenterX,\s*draggedCenterY\s*\);/);
-  assert.match(themeJs, /const insertBeforeItem = items\[targetIndex\] \|\| null;/);
-  assert.match(themeJs, /const targetBeforeNode = insertBeforeItem \|\| addCard \|\| null;/);
-  assert.match(themeJs, /const currentBeforeNode = quickShortcutSlotEl\.nextElementSibling \|\| null;/);
-  assert.match(themeJs, /if \(targetBeforeNode === currentBeforeNode\) return;/);
-  assert.match(themeJs, /const previousOrderIds = \[\.\.\.listEl\.querySelectorAll\('\[data-shortcut-id\]'\)\]/);
-  assert.match(themeJs, /const affectedIds = new Set\(/);
-  assert.match(themeJs, /settleQuickShortcutItems\(listEl, affectedIds\);/);
-  assert.match(themeJs, /animateQuickShortcutNode\(quickShortcutSlotEl, previousSlotRect\);/);
+  assert.match(themeJs, /data-shortcut-command="reorder"/);
+  assert.match(quickShortcutsControllerJs, /const DEFAULT_DRAG_THRESHOLD = 8;/);
+  assert.match(quickShortcutsControllerJs, /slotTargets: captureSlotTargets\(\)/);
+  assert.match(quickShortcutsControllerJs, /const preview = drag\.sourceCard\.cloneNode\(true\);/);
+  assert.match(quickShortcutsControllerJs, /ownerWindow\.addEventListener\('pointermove', onPointerMove, true\)/);
+  assert.match(quickShortcutsControllerJs, /await options\.onReorder\?\.\(\{ ids: nextOrder, source: 'pointer' \}\)/);
+  assert.doesNotMatch(quickShortcutsControllerJs, /dragstart|setDragImage/);
   assert.match(css, /body\.quick-shortcut-list-dragging\s*\{/);
-  assert.match(css, /\.quick-shortcut-card\.is-drag-ghost\s*\{[\s\S]*position:\s*fixed;[\s\S]*height:\s*var\(--drag-height, auto\);[\s\S]*pointer-events:\s*none;/);
-  assert.match(css, /\.quick-shortcut-card\.is-drag-ghost \.quick-shortcut-open\s*\{[\s\S]*transform:\s*none;[\s\S]*transition:\s*none;/);
-  assert.match(css, /\.quick-shortcut-slot\s*\{[\s\S]*width:\s*76px;[\s\S]*min-height:\s*56px;[\s\S]*pointer-events:\s*none;/);
+  assert.match(css, /\.quick-shortcut-drag-preview\s*\{[\s\S]*position:\s*fixed;[\s\S]*pointer-events:\s*none;/);
+  assert.match(css, /\.quick-shortcut-card\.is-drag-slot\s*\{[\s\S]*pointer-events:\s*none;/);
 });
 
 test('quick shortcut add flows keep toast actions clickable and avoid stale duplicate state', () => {
@@ -588,7 +759,7 @@ test('quick shortcut add flows keep toast actions clickable and avoid stale dupl
 
   assert.match(css, /\.toast\.visible\s*\{[\s\S]*pointer-events:\s*auto;/);
   assert.match(themeJs, /async function removeQuickShortcutById\(shortcutId\)\s*\{/);
-  assert.match(themeJs, /showToast\('Tab added — undo\?',\s*\{[\s\S]*await removeQuickShortcutById\(nextShortcut\.id\);[\s\S]*await renderQuickShortcuts\(\);[\s\S]*\}\s*,?\s*\}\s*\);/);
+  assert.match(themeJs, /showToast\([\s\S]*toastTabAddedUndo[\s\S]*await removeQuickShortcutById\(nextShortcut\.id\);[\s\S]*await renderQuickShortcuts\(\);[\s\S]*\}\s*,?\s*\}\s*\);/);
   assert.match(themeJs, /const existingUrls = new Set\(shortcuts\.map\(s => s\.url\)\);[\s\S]*const shortcutUrl = tab\.url \|\| '';/);
   assert.match(themeJs, /if \(existingUrls\.has\(shortcutUrl\)\) continue;[\s\S]*newShortcuts\.push\(\{[\s\S]*url: shortcutUrl,[\s\S]*\}\);[\s\S]*existingUrls\.add\(shortcutUrl\);/);
 });
@@ -698,7 +869,7 @@ test('interactive controls keep button semantics and reduced-motion support', ()
 
   assert.match(themeJs, /class="quick-shortcut-open" type="button"/);
   assert.match(themeJs, /class="quick-shortcut-remove" type="button"/);
-  assert.match(themeJs, /aria-pressed="\$\{themePreferences\.paletteId === id\}"/);
+  assert.match(themeJs, /aria-pressed="\$\{themePreferences\.styleId === id\}"/);
   assert.match(themeJs, /aria-pressed="\$\{themePreferences\.mode === id\}"/);
   assert.match(themeJs, /function prefersReducedMotion\(\)/);
   assert.match(appJs, /behavior:\s*prefersReducedMotion\(\) \? 'auto' : 'smooth'/);
@@ -712,16 +883,18 @@ test('drawer detail escapes todo title and description before injecting HTML', (
   assert.ok(drawerJs.includes(`replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')`));
 });
 
-test('theme state uses separate mode and palette preferences', () => {
+test('theme state uses separate mode and style preferences with palette compatibility', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
   assert.match(themeJs, /mode:\s*'system'/);
+  assert.match(themeJs, /styleId:\s*'paper-desk'/);
   assert.match(themeJs, /paletteId:\s*'paper'/);
   assert.doesNotMatch(themeJs, /themePreferences = \{[\s\S]*themeId:/);
   assert.match(themeJs, /resolvedTone/);
   assert.match(themeJs, /theme-tone-dark/);
   assert.match(themeJs, /theme-tone-light/);
-  assert.match(themeJs, /body\.dataset\.themePalette = theme\.id;/);
+  assert.match(themeJs, /body\.dataset\.themeStyle = theme\.styleId;/);
+  assert.match(themeJs, /body\.dataset\.themePalette = theme\.paletteId;/);
   assert.match(css, /body\.theme-tone-light\[data-theme-palette="paper"\]:not\(\.has-custom-background\)\s*\{[\s\S]*background-color:\s*#f4eddf;[\s\S]*radial-gradient\(ellipse at 18% 4%/);
   assert.match(css, /body\.theme-tone-light\[data-theme-palette="paper"\]:not\(\.has-custom-background\)::after\s*\{[\s\S]*linear-gradient\(104deg,[\s\S]*background-size:\s*132px 132px/);
   assert.match(appJs, /themeModeSystem/);
@@ -732,18 +905,30 @@ test('theme state uses separate mode and palette preferences', () => {
 });
 
 test('quick shortcut left clicks overwrite the current Tab Harbor tab', () => {
-  assert.match(runtimeJs, /async function navigateCurrentTabToUrl\(url\)\s*\{[\s\S]*chrome\.tabs\.getCurrent\(\)[\s\S]*chrome\.tabs\.update\(currentTab\.id,\s*\{\s*url,\s*active:\s*true\s*\}\)[\s\S]*chrome\.tabs\.query\(\{\s*active:\s*true,\s*currentWindow:\s*true,\s*\}\)[\s\S]*chrome\.tabs\.update\(activeTab\.id,\s*\{\s*url,\s*active:\s*true\s*\}\)/);
+  assert.match(runtimeJs, /async function navigateCurrentTabToUrl\(url\)\s*\{\s*if \(!url\) return false;\s*const currentTab = await chrome\.tabs\.getCurrent\(\);[\s\S]*await chrome\.tabs\.update\(currentTab\.id, \{ url, active: true \}\);[\s\S]*const \[activeTab\] = await chrome\.tabs\.query\(\{\s*active: true,\s*currentWindow: true,\s*\}\);[\s\S]*await chrome\.tabs\.update\(activeTab\.id, \{ url, active: true \}\);\s*return true;\s*\}/);
+  assert.doesNotMatch(runtimeJs, /navigateCurrentTabToUrl\(url\)[\s\S]*chrome\.tabs\.create\(\{ url, active: true \}\)/);
   assert.match(runtimeJs, /async function openOrFocusUrl\(url\)\s*\{\s*if \(!url\) return false;\s*await navigateCurrentTabToUrl\(url\);\s*return true;\s*\}/);
+  assert.match(runtimeJs, /globalThis\.TabHarborDashboardRuntime = \{[\s\S]*openOrFocusUrl,[\s\S]*openUrlInBackgroundTab,[\s\S]*\};/);
+  assert.match(themeJs, /onOpenCurrent: \(\{ url \}\) => globalThis\.TabHarborDashboardRuntime\?\.openOrFocusUrl\?\.\(url\)/);
   assert.match(runtimeJs, /const fallbackUrl = `https:\/\/www\.google\.com\/search\?q=\$\{encodeURIComponent\(text\)\}`;\s*await navigateCurrentTabToUrl\(fallbackUrl\);/);
+});
+
+test('quick shortcut hover feedback does not move pointer-sensitive artwork', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(css, /\.quick-shortcut-card\s*\{[^}]*transition:\s*transform[^}]*\}/);
+  assert.doesNotMatch(css, /\.quick-shortcut-card\s*\{[^}]*will-change:\s*transform[^}]*\}/);
+  assert.match(css, /\.quick-shortcut-card:hover \.quick-shortcut-open,\s*\.quick-shortcut-open:focus-visible\s*\{[^}]*transform:\s*none;/);
+  assert.match(css, /\.quick-shortcut-card:hover \.quick-shortcut-icon-wrap,\s*\.quick-shortcut-open:focus-visible\s*\.quick-shortcut-icon-wrap\s*\{[^}]*transform:\s*none;/);
 });
 
 test('quick shortcut middle clicks open the URL in a background tab', () => {
   assert.match(runtimeJs, /async function openUrlInBackgroundTab\(url\)\s*\{\s*if \(!url\) return false;\s*await chrome\.tabs\.create\(\{\s*url,\s*active:\s*false\s*\}\);\s*return true;\s*\}/);
   assert.match(runtimeJs, /globalThis\.TabHarborDashboardRuntime = \{[\s\S]*openUrlInBackgroundTab,[\s\S]*\};/);
-  assert.match(themeJs, /let quickShortcutMiddleClickSuppressUntil = 0;/);
-  assert.match(themeJs, /async function handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\)\s*\{[\s\S]*quickShortcutSuppressClickUntil[\s\S]*quickShortcutMiddleClickSuppressUntil[\s\S]*runtime\.openUrlInBackgroundTab\(url\);[\s\S]*\}/);
-  assert.match(themeJs, /document\.addEventListener\('auxclick',\s*async \(e\) => \{[\s\S]*e\.button !== 1[\s\S]*handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\);[\s\S]*\}\);/);
-  assert.match(themeJs, /document\.addEventListener\('pointerdown',\s*\(e\) => \{[\s\S]*if \(e\.button === 1\) \{[\s\S]*handleQuickShortcutMiddleOpen\(shortcutButton,\s*e\);[\s\S]*return;[\s\S]*\}[\s\S]*if \(e\.button !== 0\) return;/);
+  assert.match(themeJs, /onOpenBackground: \(\{ url \}\) => globalThis\.TabHarborDashboardRuntime\?\.openUrlInBackgroundTab\?\.\(url\)/);
+  assert.match(quickShortcutsControllerJs, /state\.phase = 'middle-press'/);
+  assert.match(quickShortcutsControllerJs, /root\.addEventListener\('auxclick', onAuxClick, true\)/);
+  assert.match(quickShortcutsControllerJs, /void options\.onOpenBackground\?\.\(\{/);
 });
 
 test('duplicate Tab Harbor banner appears only for three or more Tab Harbor tabs', () => {

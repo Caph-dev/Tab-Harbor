@@ -557,6 +557,8 @@ async function fetchOpenTabs() {
     // chrome.tabs API unavailable (shouldn't happen in an extension page)
     openTabs = [];
   }
+
+  return openTabs;
 }
 
 async function loadSessionGroups(openTabIds = []) {
@@ -1622,6 +1624,7 @@ function renderDomainCard(group) {
           : `Close ${totalExtras} duplicate${totalExtras !== 1 ? 's' : ''}`}
       </button>`;
   }
+  actionsHtml += closeAllButton;
 
   return `
     <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : 'has-neutral-bar'}" data-domain-id="${stableId}" data-group-id="${group.domain}">
@@ -1633,10 +1636,9 @@ function renderDomainCard(group) {
             ${tabBadge}
             ${dupeBadge}
           </div>
-          ${closeAllButton}
         </div>
         <div class="mission-pages">${pageChips}</div>
-        ${actionsHtml ? `<div class="actions">${actionsHtml}</div>` : ''}
+        <div class="actions mission-actions">${actionsHtml}</div>
       </div>
       <div class="mission-meta">
         <div class="mission-page-count">${tabCount}</div>
@@ -1706,6 +1708,14 @@ function renderGroupNavArea(groups) {
           <div class="theme-menu-label">${runtimeT ? runtimeT('deskPalette') : 'Desk palette'}</div>
           <div class="theme-options" id="themeOptions"></div>
         </div>
+        <details class="theme-personalize" id="themePersonalize">
+          <summary class="theme-personalize-summary">
+            <span>${runtimeT ? runtimeT('personalize') : 'Personalize'}</span>
+            <svg class="theme-personalize-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 10.5 3.75 3.75 3.75-3.75" />
+            </svg>
+          </summary>
+          <div class="theme-personalize-body">
         <div class="theme-menu-section">
           <div class="theme-menu-label">${runtimeT ? runtimeT('deskBackdrop') : 'Desk backdrop'}</div>
           <div class="theme-menu-actions">
@@ -1731,8 +1741,8 @@ function renderGroupNavArea(groups) {
               id="themeTransparencyRange"
               type="range"
               aria-label="${runtimeT ? runtimeT('surfaceDepth') : 'Surface depth'}"
-              min="2"
-              max="60"
+              min="0"
+              max="100"
               step="1"
               value="14"
             >
@@ -1767,7 +1777,13 @@ function renderGroupNavArea(groups) {
             <button class="theme-toggle-switch ${(typeof themePreferences !== 'undefined' && themePreferences.hitokotoEnabled !== false) ? 'is-active' : ''}" type="button" data-action="toggle-hitokoto" aria-pressed="${(typeof themePreferences !== 'undefined' && themePreferences.hitokotoEnabled !== false) ? 'true' : 'false'}" aria-label="${runtimeT ? runtimeT('hitokotoLabel') : '一言'}"></button>
             <span class="theme-menu-label theme-menu-toggle-text">${runtimeT ? runtimeT('hitokotoLabel') : '一言'}</span>
           </label>
+          <label class="theme-menu-toggle">
+            <button class="theme-toggle-switch ${(typeof themePreferences !== 'undefined' && themePreferences.quickShortcutReorderingEnabled === true) ? 'is-active' : ''}" type="button" id="themeShortcutReorderingToggle" data-action="toggle-shortcut-reordering" aria-pressed="${(typeof themePreferences !== 'undefined' && themePreferences.quickShortcutReorderingEnabled === true) ? 'true' : 'false'}" aria-label="${runtimeT ? runtimeT('allowShortcutReordering') : 'Allow shortcut reordering'}"></button>
+            <span class="theme-menu-label theme-menu-toggle-text">${runtimeT ? runtimeT('allowShortcutReordering') : 'Allow shortcut reordering'}</span>
+          </label>
         </div>
+          </div>
+        </details>
         <input type="file" id="themeBackgroundInput" accept="image/*" hidden>
       </div>
     </div>`;
@@ -1806,11 +1822,19 @@ async function renderStaticDashboard(options = {}) {
   renderThemeMenu();
 
   // --- Fetch tabs ---
-  await fetchOpenTabs();
-  await renderQuickShortcuts();
+  if (Array.isArray(options.tabsSnapshot)) {
+    openTabs = options.tabsSnapshot;
+  } else {
+    await fetchOpenTabs();
+  }
   const realTabs = getRealTabs();
-  await loadSessionGroups(realTabs.map(tab => tab.id));
-  await loadGroupOrder();
+  await Promise.all([
+    renderQuickShortcuts(),
+    options.sessionGroupsLoaded
+      ? Promise.resolve(sessionGroupsState)
+      : loadSessionGroups(realTabs.map(tab => tab.id)),
+    loadGroupOrder(),
+  ]);
 
   // --- Group tabs by domain ---
   // Landing pages (Gmail inbox, Twitter home, etc.) get their own special group
@@ -2084,8 +2108,8 @@ document.addEventListener('click', async (e) => {
   }
 
   if (action === 'select-theme') {
-    const paletteId = actionEl.dataset.paletteId || 'paper';
-    await saveThemePreferences({ paletteId });
+    const styleId = actionEl.dataset.styleId || actionEl.dataset.paletteId || 'paper-desk';
+    await saveThemePreferences({ styleId });
     setThemeMenuOpen(false, { restoreFocus: true });
     showToast(runtimeT ? runtimeT('toastThemeUpdated') : 'Theme updated');
     return;
@@ -3168,30 +3192,30 @@ function setupImageErrorHandlers() {
 
 async function initializeDashboardRuntime() {
   injectDynamicAnimationStyles();
-  await loadThemePreferences();
   const { initFaviconCache: runtimeInitFaviconCache } = globalThis.TabHarborFaviconCache || {};
-  if (typeof runtimeInitFaviconCache === 'function') {
-    await runtimeInitFaviconCache();
-  }
-  if (typeof runtimeInitQuickShortcutsSync === 'function') {
-    await runtimeInitQuickShortcutsSync();
-  }
-  if (typeof runtimeInitDrawerSync === 'function') {
-    await runtimeInitDrawerSync();
-  }
-  if (typeof loadChromeTabGroupsSetting === 'function') {
-    chromeTabGroupsEnabled = await loadChromeTabGroupsSetting();
-  }
-  await loadImportedChromeGroupMeta();
+  const startupResults = await Promise.all([
+    loadThemePreferences(),
+    typeof runtimeInitFaviconCache === 'function' ? runtimeInitFaviconCache() : Promise.resolve(),
+    typeof runtimeInitQuickShortcutsSync === 'function' ? runtimeInitQuickShortcutsSync() : Promise.resolve(),
+    typeof runtimeInitDrawerSync === 'function' ? runtimeInitDrawerSync() : Promise.resolve(),
+    typeof loadChromeTabGroupsSetting === 'function'
+      ? loadChromeTabGroupsSetting()
+      : Promise.resolve(false),
+    loadImportedChromeGroupMeta(),
+  ]);
+  chromeTabGroupsEnabled = Boolean(startupResults[4]);
+
+  const tabsSnapshot = await fetchOpenTabs();
+  let sessionGroupsLoaded = false;
   if (chromeTabGroupsEnabled) {
-    await fetchOpenTabs();
     const realTabs = getRealTabs();
     await loadSessionGroups(realTabs.map(tab => tab.id));
+    sessionGroupsLoaded = true;
     const importedCount = await importChromeNativeGroupsIntoSessionGroups();
     if (typeof setImportMode === 'function') setImportMode(importedCount > 0);
   }
   ensureChromeTabGroupsSubscription();
-  await renderDashboard();
+  await renderDashboard({ tabsSnapshot, sessionGroupsLoaded });
   await collapseChromeGroupsForCurrentTabHarborTab();
   updateBackToTopVisibility();
 
@@ -3205,7 +3229,11 @@ async function initializeDashboardRuntime() {
  * Listens for messages from background.js when tabs change,
  * and refreshes the dashboard to show updated tab list.
  */
+let dashboardTabChangeListenerAttached = false;
+
 function setupTabChangeListener() {
+  if (dashboardTabChangeListenerAttached) return;
+  dashboardTabChangeListenerAttached = true;
   tabHarborRuntimeDebugLog('[tab-harbor] Setting up tab change listener');
   
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -3250,6 +3278,8 @@ if (typeof globalThis.addEventListener === 'function') {
   });
 }
 
+let dashboardRuntimeInitializationPromise = null;
+
 function mountDashboardRuntime() {
   if (!window.__tabHarborRuntimeMounted) {
     window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
@@ -3263,7 +3293,10 @@ function mountDashboardRuntime() {
     });
     window.__tabHarborRuntimeMounted = true;
   }
-  return initializeDashboardRuntime();
+  if (!dashboardRuntimeInitializationPromise) {
+    dashboardRuntimeInitializationPromise = initializeDashboardRuntime();
+  }
+  return dashboardRuntimeInitializationPromise;
 }
 
 globalThis.TabHarborDashboardRuntime = {
@@ -3271,5 +3304,6 @@ globalThis.TabHarborDashboardRuntime = {
   mountDashboardRuntime,
   fetchOpenTabs,
   getOpenTabs: () => openTabs,
+  openOrFocusUrl,
   openUrlInBackgroundTab,
 };

@@ -259,9 +259,9 @@
         </div>
       </div>
       <div class="last-refresh">
-        <span class="footer-credit"><a class="footer-credit-link" href="https://github.com/Walaxy/tab-harbor"
+        <span class="footer-credit"><a class="footer-credit-link" href="https://github.com/Caph-dev/Tab-Harbor"
             target="_top">Tab Harbor</a> <span class="footer-version" id="footerVersion">v—</span> by <a
-            class="footer-credit-link" href="https://github.com/Walaxy/tab-harbor" target="_top">Caph</a></span>
+            class="footer-credit-link" href="https://github.com/Caph-dev/Tab-Harbor" target="_top">Caph</a></span>
       </div>
     </footer>
 
@@ -357,6 +357,26 @@
             <div class="shortcut-editor-icon-candidates" id="shortcutEditorIconCandidates"></div>
           </div>
 
+          <div class="shortcut-editor-style-group" id="shortcutEditorPresentationGroup">
+            <div class="shortcut-editor-label" data-i18n="shortcutIconFittingLabel">Icon fitting</div>
+            <div class="shortcut-editor-presentation-options" role="group" aria-label="Icon fitting"
+              data-i18n-aria-label="shortcutIconFittingLabel">
+              <button class="shortcut-editor-presentation-option" type="button"
+                data-action="set-shortcut-icon-presentation" data-icon-presentation="auto" aria-pressed="true"
+                data-i18n="shortcutIconFittingAuto">Auto</button>
+              <button class="shortcut-editor-presentation-option" type="button"
+                data-action="set-shortcut-icon-presentation" data-icon-presentation="original" aria-pressed="false"
+                data-i18n="shortcutIconFittingOriginal">Original</button>
+              <button class="shortcut-editor-presentation-option" type="button"
+                data-action="set-shortcut-icon-presentation" data-icon-presentation="glyph" aria-pressed="false"
+                data-i18n="shortcutIconFittingGlyph">Glyph</button>
+              <button class="shortcut-editor-presentation-option" type="button"
+                data-action="set-shortcut-icon-presentation" data-icon-presentation="fill" aria-pressed="false"
+                data-i18n="shortcutIconFittingFill">Fill</button>
+            </div>
+            <div class="shortcut-editor-mode-note" data-i18n="shortcutIconFittingHelp">Auto balances transparent marks and full-tile website icons.</div>
+          </div>
+
           <div class="shortcut-editor-style-group" id="shortcutEditorStyleGroup">
             <div class="shortcut-editor-label">Icon shape</div>
             <div class="shortcut-editor-shape-options" role="group" aria-label="Icon shape">
@@ -442,7 +462,8 @@
   <script src="config.js"></script>
   <script src="config-loader.js"></script>
 
-  <!-- Shared icon helpers — real favicons first, then graceful fallbacks -->
+  <!-- Shared icon helpers — analyze once, then keep source and treatment consistent -->
+  <script src="adaptive-icon.js"></script>
   <script src="favicon-cache.js"></script>
   <script src="icon-utils.js"></script>
   <script src="session-groups.js"></script>
@@ -455,6 +476,8 @@
   <script src="background-image.js"></script>
   <script src="i18n.js"></script>
   <script src="ui-helpers.js"></script>
+  <script src="theme-catalog.js"></script>
+  <script src="quick-shortcuts-controller.js"></script>
   <script src="theme-controls.js"></script>
   <script src="drawer-manager.js"></script>
   <script src="chrome-tab-groups-import.js"></script>

@@ -2,6 +2,7 @@
 
 const popupTheme = globalThis.TabOutThemeControls || {};
 const popupIcons = globalThis.TabOutIconUtils || {};
+const popupAdaptiveIcons = globalThis.TabHarborAdaptiveIcon || {};
 const popupListOrder = globalThis.TabOutListOrder || {};
 const popupSessionGroups = globalThis.TabOutSessionGroups || {};
 const popupGroupOrder = globalThis.TabOutGroupOrder || {};
@@ -10,14 +11,28 @@ const popupI18n = globalThis.TabHarborI18n || {};
 const SESSION_GROUPS_KEY = 'sessionGroups';
 const GROUP_ORDER_KEY = 'groupOrder';
 const GROUP_TAB_ORDER_KEY = 'groupTabOrder';
-const SHORTCUT_ICON_DEFAULT_SIZE = 32;
-const SHORTCUT_ICON_MASK_SIZE = 36;
-const SHORTCUT_ICON_DEFAULT_RADIUS = 0;
-const SHORTCUT_ICON_MASK_RADIUS = 10;
-const SHORTCUT_ICON_MIN_SIZE = 24;
-const SHORTCUT_ICON_MAX_SIZE = 40;
-const SHORTCUT_ICON_MIN_RADIUS = 0;
-const SHORTCUT_ICON_MAX_RADIUS = 20;
+const POPUP_SHORTCUT_ICON_DEFAULT_SIZE = 32;
+const POPUP_SHORTCUT_ICON_MASK_SIZE = 36;
+const POPUP_SHORTCUT_ICON_DEFAULT_RADIUS = 0;
+const POPUP_SHORTCUT_ICON_MASK_RADIUS = 10;
+const POPUP_SHORTCUT_ICON_MIN_SIZE = 24;
+const POPUP_SHORTCUT_ICON_MAX_SIZE = 40;
+const POPUP_SHORTCUT_ICON_MIN_RADIUS = 0;
+const POPUP_SHORTCUT_ICON_MAX_RADIUS = 20;
+const POPUP_REFRESH_SCOPE = Object.freeze({
+  SHORTCUTS: 'shortcuts',
+  TABS: 'tabs',
+  THEME: 'theme',
+  FAVICON: 'favicon',
+  LANGUAGE: 'language',
+});
+const POPUP_INITIAL_REFRESH_SCOPES = [
+  POPUP_REFRESH_SCOPE.SHORTCUTS,
+  POPUP_REFRESH_SCOPE.THEME,
+  POPUP_REFRESH_SCOPE.FAVICON,
+  POPUP_REFRESH_SCOPE.LANGUAGE,
+];
+const POPUP_FULL_REFRESH_SCOPES = Object.values(POPUP_REFRESH_SCOPE);
 
 const popupState = {
   view: 'shortcuts',
@@ -57,6 +72,7 @@ const POPUP_REFRESH_KEYS = new Set([
   'quickShortcuts',
   'tabHarbor.shortcut.order',
   'tabHarbor.favicon.cache',
+  'tabHarbor.favicon.index',
   'sessionGroups',
   'groupOrder',
   'groupTabOrder',
@@ -66,7 +82,24 @@ const POPUP_REFRESH_KEYS = new Set([
 
 let popupRefreshTimer = null;
 let popupRefreshInFlight = null;
-let popupRefreshQueued = false;
+const popupPendingRefreshScopes = new Set();
+const popupQueuedRefreshScopes = new Set();
+
+function addPopupRefreshScopes(target, scopes) {
+  const values = scopes instanceof Set
+    ? scopes
+    : Array.isArray(scopes)
+      ? scopes
+      : [scopes];
+  for (const scope of values) {
+    if (scope) target.add(scope);
+  }
+  return target;
+}
+
+function normalizePopupRefreshScopes(scopes = POPUP_FULL_REFRESH_SCOPES) {
+  return addPopupRefreshScopes(new Set(), scopes);
+}
 
 function escapeAttr(value = '') {
   return popupIcons.escapeHtmlAttribute ? popupIcons.escapeHtmlAttribute(value) : String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -219,18 +252,18 @@ function clampPopupNumber(value, min, max, fallback) {
 function normalizePopupShortcutIconSize(value, iconMask = 'none') {
   return clampPopupNumber(
     value,
-    SHORTCUT_ICON_MIN_SIZE,
-    SHORTCUT_ICON_MAX_SIZE,
-    iconMask === 'rounded' ? SHORTCUT_ICON_MASK_SIZE : SHORTCUT_ICON_DEFAULT_SIZE
+    POPUP_SHORTCUT_ICON_MIN_SIZE,
+    POPUP_SHORTCUT_ICON_MAX_SIZE,
+    iconMask === 'rounded' ? POPUP_SHORTCUT_ICON_MASK_SIZE : POPUP_SHORTCUT_ICON_DEFAULT_SIZE
   );
 }
 
 function normalizePopupShortcutIconRadius(value, iconMask = 'none') {
   return clampPopupNumber(
     value,
-    SHORTCUT_ICON_MIN_RADIUS,
-    SHORTCUT_ICON_MAX_RADIUS,
-    iconMask === 'rounded' ? SHORTCUT_ICON_MASK_RADIUS : SHORTCUT_ICON_DEFAULT_RADIUS
+    POPUP_SHORTCUT_ICON_MIN_RADIUS,
+    POPUP_SHORTCUT_ICON_MAX_RADIUS,
+    iconMask === 'rounded' ? POPUP_SHORTCUT_ICON_MASK_RADIUS : POPUP_SHORTCUT_ICON_DEFAULT_RADIUS
   );
 }
 
@@ -369,15 +402,7 @@ function getOrderedUniqueTabsForGroup(group) {
   return reorderGroupTabsByStoredUrls(uniqueTabs, group?.domain);
 }
 
-async function loadPopupState({ skipTabs = false } = {}) {
-  if (globalThis._skipLoadPopupState) return;
-  const shortcutsGetter = popupTheme.getQuickShortcuts;
-  if (typeof shortcutsGetter === 'function') {
-    popupState.quickShortcuts = await shortcutsGetter();
-  }
-
-  if (skipTabs) return;
-
+async function loadPopupTabsState() {
   const [tabs, tabGroups, sgResult, goResult, groupTabOrderResult] = await Promise.all([
     chrome.tabs.query({}),
     chrome.tabGroups.query({}),
@@ -396,6 +421,12 @@ async function loadPopupState({ skipTabs = false } = {}) {
     groupId: tab.groupId,
   }));
 
+  const tabsByGroupId = new Map();
+  for (const tab of popupState.openTabs) {
+    if (!tabsByGroupId.has(tab.groupId)) tabsByGroupId.set(tab.groupId, []);
+    tabsByGroupId.get(tab.groupId).push(tab);
+  }
+
   popupState.tabGroups = Array.isArray(tabGroups)
     ? tabGroups
         .map(group => ({
@@ -403,7 +434,7 @@ async function loadPopupState({ skipTabs = false } = {}) {
           title: group.title || '',
           color: group.color || '',
           collapsed: Boolean(group.collapsed),
-          tabs: popupState.openTabs.filter(tab => tab.groupId === group.id),
+          tabs: tabsByGroupId.get(group.id) || [],
         }))
         .filter(group => group.tabs.length > 0)
     : [];
@@ -414,6 +445,20 @@ async function loadPopupState({ skipTabs = false } = {}) {
   const normalizeOrderFn = popupGroupOrder.normalizeGroupOrderState;
   popupState.groupOrder = normalizeOrderFn ? normalizeOrderFn(goResult[GROUP_ORDER_KEY]) : { sessionOrder: [], pinnedOrder: [], pinEnabled: false };
   popupState.groupTabOrder = normalizeGroupTabOrderState(groupTabOrderResult[GROUP_TAB_ORDER_KEY]);
+}
+
+async function loadPopupState({ skipTabs = false, skipShortcuts = false } = {}) {
+  if (globalThis._skipLoadPopupState) return;
+  const jobs = [];
+  const shortcutsGetter = popupTheme.getQuickShortcuts;
+  if (!skipShortcuts && typeof shortcutsGetter === 'function') {
+    jobs.push(Promise.resolve(shortcutsGetter()).then(shortcuts => {
+      popupState.quickShortcuts = shortcuts;
+    }));
+  }
+
+  if (!skipTabs) jobs.push(loadPopupTabsState());
+  await Promise.all(jobs);
 }
 
 function buildPopupTabGroups() {
@@ -526,7 +571,6 @@ function renderPopupShortcuts() {
   listEl.innerHTML = popupState.quickShortcuts.length
     ? popupState.quickShortcuts.map((s, i) => renderShortcutCard(s, i)).join('')
     : '';
-  syncPopupShortcutAutoStretchImages(listEl);
   emptyEl.hidden = popupState.quickShortcuts.length > 0;
 
   requestAnimationFrame(() => requestAnimationFrame(() => listEl.classList.add('is-ready')));
@@ -535,23 +579,28 @@ function renderPopupShortcuts() {
 function renderShortcutCard(shortcut, index) {
   const label = shortcut.label || shortcut.url;
   const iconKind = String(shortcut.iconKind || '');
-  const iconData = popupIcons.getIconSources ? popupIcons.getIconSources({ url: shortcut.url, favIconUrl: iconKind === 'image' ? shortcut.icon : '' }, 32) : { sources: [], hostname: '' };
+  const iconData = popupIcons.getIconSources ? popupIcons.getIconSources({ url: shortcut.url }, 32) : { sources: [], hostname: '' };
   const safeUrl = escapeAttr(shortcut.url);
   const safeLabel = escapeAttr(label);
+  const siteIconUrl = iconData.sources?.[0] || '';
+  const siteFallbackUrl = iconData.sources?.[1] || '';
   const primaryIconUrl = iconKind === 'image'
     ? shortcut.icon
     : iconKind === 'svg'
       ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(shortcut.icon || '')}`
       : iconKind === 'glyph'
         ? ''
-        : (iconData.sources?.[0] || '');
+        : siteIconUrl;
   const glyph = iconKind === 'glyph' ? shortcut.icon : '';
+  const iconErrorFallback = iconKind === 'image' || iconKind === 'svg'
+    ? (siteIconUrl || siteFallbackUrl)
+    : siteFallbackUrl;
+  const safePrimaryIconUrl = escapeAttr(primaryIconUrl);
+  const safeIconErrorFallback = escapeAttr(iconErrorFallback);
+  const safeGlyph = escapeAttr(glyph);
   const fallbackLabel = popupIcons.getFallbackLabel ? popupIcons.getFallbackLabel(label, iconData.hostname) : label.slice(0, 1).toUpperCase();
   const iconMask = shortcut.iconMask === 'rounded' ? 'rounded' : 'none';
   const iconStyle = getPopupShortcutIconStyleAttribute();
-  const stretchClass = iconKind === 'image' || iconKind === 'svg'
-    ? ' quick-shortcut-icon-auto-stretch'
-    : '';
   const iconSource = iconKind === 'image'
     ? 'custom-image'
     : iconKind === 'svg'
@@ -564,38 +613,39 @@ function renderShortcutCard(shortcut, index) {
   const iconTone = popupTheme.getShortcutIconTone
     ? popupTheme.getShortcutIconTone(iconData.hostname)
     : 'neutral';
+  const adaptiveViewModel = popupAdaptiveIcons.createAdaptiveIconViewModel
+    ? popupAdaptiveIcons.createAdaptiveIconViewModel({
+        iconPresentation: shortcut.iconPresentation,
+        iconKind: iconKind || 'site',
+        iconMask,
+        hasPrimaryIcon: Boolean(primaryIconUrl),
+        hasGlyph: Boolean(glyph),
+        adaptiveIcon: iconData.adaptiveIcon,
+      })
+      : {
+        requestedPresentation: 'auto',
+        treatment: iconSource === 'glyph' || iconSource === 'fallback' ? 'glyph' : 'original',
+        plateShape: iconSource === 'glyph' || iconSource === 'fallback' ? 'circle' : 'rounded-square',
+        artworkFit: 'contain',
+        cardClass: iconSource === 'glyph' || iconSource === 'fallback'
+          ? 'has-icon-treatment-glyph has-icon-plate-circle has-icon-fit-contain'
+          : 'has-icon-treatment-original has-icon-plate-rounded-square has-icon-fit-contain',
+        placement: { scale: 1, offsetX: 0, offsetY: 0 },
+      };
+  const adaptiveStyle = `--adaptive-icon-scale:${adaptiveViewModel.placement.scale};--adaptive-icon-offset-x:${adaptiveViewModel.placement.offsetX * 100}%;--adaptive-icon-offset-y:${adaptiveViewModel.placement.offsetY * 100}%;`;
 
   return `
-    <div class="quick-shortcut-card popup-shortcut-card${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}" data-icon-source="${iconSource}" data-icon-tone="${iconTone}" style="--s:${index};${iconStyle}">
+    <div class="quick-shortcut-card popup-shortcut-card ${adaptiveViewModel.cardClass}${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}" data-icon-presentation="${adaptiveViewModel.requestedPresentation}" data-icon-treatment="${adaptiveViewModel.treatment}" data-icon-plate="${adaptiveViewModel.plateShape}" data-icon-fit="${adaptiveViewModel.artworkFit}" data-icon-source="${iconSource}" data-icon-tone="${iconTone}" style="--s:${index};${iconStyle}${adaptiveStyle}">
       <button class="quick-shortcut-open" type="button" data-action="open-popup-url" data-url="${safeUrl}" aria-label="${safeLabel}">
         <span class="quick-shortcut-icon-wrap">
-          ${primaryIconUrl ? `<img class="quick-shortcut-icon${iconKind === 'image' ? ' quick-shortcut-icon-custom' : ''}${stretchClass}" src="${primaryIconUrl}" alt="" draggable="false" data-auto-stretch-icon="true">` : ''}
-          ${glyph ? `<span class="quick-shortcut-custom-glyph" aria-hidden="true">${glyph}</span>` : ''}
+          ${primaryIconUrl ? `<img class="quick-shortcut-icon${iconKind === 'image' ? ' quick-shortcut-icon-custom' : ''}" src="${safePrimaryIconUrl}" alt="" draggable="false" data-fallback-src="${safeIconErrorFallback}">` : ''}
+          ${glyph ? `<span class="quick-shortcut-custom-glyph" aria-hidden="true">${safeGlyph}</span>` : ''}
           <span class="quick-shortcut-fallback"${primaryIconUrl || glyph ? ' style="display:none"' : ''}>${fallbackLabel}</span>
         </span>
         <span class="quick-shortcut-label">${safeLabel}</span>
       </button>
     </div>
   `;
-}
-
-function syncPopupShortcutAutoStretchImage(imgEl) {
-  if (!(imgEl instanceof HTMLImageElement)) return;
-  if (imgEl.dataset.autoStretchIcon !== 'true') return;
-  const card = imgEl.closest('.quick-shortcut-card');
-  if (!card?.classList.contains('has-rounded-icon-mask')) return;
-
-  const naturalMin = Math.min(imgEl.naturalWidth || 0, imgEl.naturalHeight || 0);
-  if (!naturalMin) return;
-  imgEl.classList.toggle('is-auto-stretched', naturalMin <= 48);
-}
-
-function syncPopupShortcutAutoStretchImages(root = document) {
-  root.querySelectorAll?.('.quick-shortcut-icon[data-auto-stretch-icon="true"]').forEach(img => {
-    if (img.complete) {
-      syncPopupShortcutAutoStretchImage(img);
-    }
-  });
 }
 
 function getGroupDisplayLabel(group) {
@@ -778,10 +828,12 @@ async function openPopupTab(tabId, fallbackUrl = '') {
   window.close();
 }
 
-function handlePopupGroupNavImageError(event) {
+function handlePopupImageError(event) {
   const target = event.target;
   if (!(target instanceof HTMLImageElement)) return;
-  if (!target.classList.contains('group-nav-icon')) return;
+  const isGroupIcon = target.classList.contains('group-nav-icon');
+  const isShortcutIcon = target.classList.contains('quick-shortcut-icon');
+  if (!isGroupIcon && !isShortcutIcon) return;
 
   const fallbackSrc = String(target.dataset.fallbackSrc || '').trim();
   if (fallbackSrc && target.dataset.fallbackApplied !== 'true') {
@@ -791,58 +843,105 @@ function handlePopupGroupNavImageError(event) {
   }
 
   target.style.display = 'none';
+  if (isShortcutIcon) {
+    const card = target.closest('.quick-shortcut-card');
+    if (card) {
+      card.dataset.iconSource = 'fallback';
+      card.dataset.iconTreatment = 'glyph';
+      card.dataset.iconPlate = 'circle';
+      card.dataset.iconFit = 'contain';
+      card.classList.remove(
+        'has-icon-treatment-original',
+        'has-icon-treatment-glyph',
+        'has-icon-treatment-fill',
+        'has-icon-treatment-tile',
+        'has-icon-treatment-disc',
+        'has-icon-plate-circle',
+        'has-icon-plate-rounded-square',
+        'has-icon-plate-none',
+        'has-icon-fit-contain',
+        'has-icon-fit-cover'
+      );
+      card.classList.add(
+        'has-icon-treatment-glyph',
+        'has-icon-plate-circle',
+        'has-icon-fit-contain'
+      );
+    }
+  }
   const sibling = target.nextElementSibling;
-  if (sibling?.classList.contains('group-nav-fallback')) {
+  const fallbackClass = isGroupIcon ? 'group-nav-fallback' : 'quick-shortcut-fallback';
+  if (sibling?.classList.contains(fallbackClass)) {
     sibling.style.display = '';
   }
 }
 
-async function refreshPopup() {
+async function refreshPopup(scopes = POPUP_FULL_REFRESH_SCOPES) {
+  const requestedScopes = normalizePopupRefreshScopes(scopes);
+  const shouldLoadShortcuts = requestedScopes.has(POPUP_REFRESH_SCOPE.SHORTCUTS);
+  const shouldLoadTabs = popupState.view === 'tabs' && requestedScopes.has(POPUP_REFRESH_SCOPE.TABS);
+  const shouldRenderShortcuts = shouldLoadShortcuts
+    || requestedScopes.has(POPUP_REFRESH_SCOPE.THEME)
+    || requestedScopes.has(POPUP_REFRESH_SCOPE.FAVICON);
+  const shouldRenderTabs = popupState.view === 'tabs' && (
+    shouldLoadTabs
+    || requestedScopes.has(POPUP_REFRESH_SCOPE.FAVICON)
+    || requestedScopes.has(POPUP_REFRESH_SCOPE.LANGUAGE)
+  );
   const faviconCache = globalThis.TabHarborFaviconCache;
-  if (faviconCache?.initFaviconCache) {
-    await faviconCache.initFaviconCache();
-  }
-  if (popupTheme.loadThemePreferences) {
-    await popupTheme.loadThemePreferences();
-  }
-  await loadPopupState({ skipTabs: popupState.view === 'shortcuts' });
-  renderPopupShortcuts();
-  if (popupState.view === 'tabs') {
-    renderPopupTabs();
-  }
+  await Promise.all([
+    requestedScopes.has(POPUP_REFRESH_SCOPE.FAVICON) && faviconCache?.initFaviconCache
+      ? faviconCache.initFaviconCache()
+      : undefined,
+    requestedScopes.has(POPUP_REFRESH_SCOPE.THEME) && popupTheme.loadThemePreferences
+      ? popupTheme.loadThemePreferences()
+      : undefined,
+    loadPopupState({
+      skipTabs: !shouldLoadTabs,
+      skipShortcuts: !shouldLoadShortcuts,
+    }),
+  ]);
+
+  if (shouldRenderShortcuts) renderPopupShortcuts();
+  if (shouldRenderTabs) renderPopupTabs();
   syncPopupView();
-  if (popupI18n.applyDomTranslations) {
+  if ((shouldRenderShortcuts || shouldRenderTabs || requestedScopes.has(POPUP_REFRESH_SCOPE.LANGUAGE)) && popupI18n.applyDomTranslations) {
     popupI18n.applyDomTranslations(document.querySelector('.popup-app'));
   }
-  if (popupTheme.syncPopupTheme) {
+  if (requestedScopes.has(POPUP_REFRESH_SCOPE.THEME) && popupTheme.syncPopupTheme) {
     popupTheme.syncPopupTheme(document);
   }
 }
 
-function schedulePopupRefresh(delay = 120) {
+function schedulePopupRefresh(scopes = POPUP_FULL_REFRESH_SCOPES, delay = 120) {
+  addPopupRefreshScopes(popupPendingRefreshScopes, scopes);
   if (popupRefreshTimer) {
     clearTimeout(popupRefreshTimer);
   }
   popupRefreshTimer = setTimeout(() => {
     popupRefreshTimer = null;
-    void refreshPopupSafely();
+    const scheduledScopes = new Set(popupPendingRefreshScopes);
+    popupPendingRefreshScopes.clear();
+    void refreshPopupSafely(scheduledScopes);
   }, delay);
 }
 
-async function refreshPopupSafely() {
+async function refreshPopupSafely(scopes = POPUP_FULL_REFRESH_SCOPES) {
+  const requestedScopes = normalizePopupRefreshScopes(scopes);
   if (popupRefreshInFlight) {
-    popupRefreshQueued = true;
+    addPopupRefreshScopes(popupQueuedRefreshScopes, requestedScopes);
     return popupRefreshInFlight;
   }
 
   popupRefreshInFlight = (async () => {
     try {
-      await refreshPopup();
+      await refreshPopup(requestedScopes);
     } finally {
       popupRefreshInFlight = null;
-      if (popupRefreshQueued) {
-        popupRefreshQueued = false;
-        schedulePopupRefresh(0);
+      if (popupQueuedRefreshScopes.size) {
+        const queuedScopes = new Set(popupQueuedRefreshScopes);
+        popupQueuedRefreshScopes.clear();
+        schedulePopupRefresh(queuedScopes, 0);
       }
     }
   })();
@@ -852,39 +951,56 @@ async function refreshPopupSafely() {
 
 function handlePopupStorageChanged(changes, areaName) {
   if (areaName !== 'local') return;
-  const hasRelevantChange = Object.keys(changes || {}).some(key =>
-    POPUP_REFRESH_KEYS.has(key) || key.startsWith('tabHarbor.shortcut.')
-  );
-  if (!hasRelevantChange) return;
-  schedulePopupRefresh();
+  const scopes = new Set();
+  for (const key of Object.keys(changes || {})) {
+    if (!POPUP_REFRESH_KEYS.has(key)
+      && !key.startsWith('tabHarbor.shortcut.')
+      && !key.startsWith('tabHarbor.favicon.entry.')) continue;
+
+    if (key === 'quickShortcuts' || key.startsWith('tabHarbor.shortcut.')) {
+      scopes.add(POPUP_REFRESH_SCOPE.SHORTCUTS);
+    } else if (key === 'sessionGroups' || key === 'groupOrder' || key === 'groupTabOrder') {
+      scopes.add(POPUP_REFRESH_SCOPE.TABS);
+    } else if (key === 'themePreferences') {
+      scopes.add(POPUP_REFRESH_SCOPE.THEME);
+    } else if (key === 'languagePreference') {
+      scopes.add(POPUP_REFRESH_SCOPE.LANGUAGE);
+    } else if (key.startsWith('tabHarbor.favicon.')) {
+      scopes.add(POPUP_REFRESH_SCOPE.FAVICON);
+    }
+  }
+  if (scopes.size) schedulePopupRefresh(scopes);
 }
 
 function registerPopupAutoRefresh() {
-  const schedule = () => schedulePopupRefresh();
+  const scheduleTabs = () => schedulePopupRefresh([POPUP_REFRESH_SCOPE.TABS]);
+  const handleTabUpdated = (_tabId, changeInfo) => {
+    const relevantFields = ['url', 'title', 'favIconUrl', 'groupId'];
+    if (relevantFields.some(field => Object.prototype.hasOwnProperty.call(changeInfo || {}, field))) {
+      scheduleTabs();
+    }
+  };
 
-  chrome.tabs?.onActivated?.addListener(schedule);
-  chrome.tabs?.onAttached?.addListener(schedule);
-  chrome.tabs?.onCreated?.addListener(schedule);
-  chrome.tabs?.onDetached?.addListener(schedule);
-  chrome.tabs?.onMoved?.addListener(schedule);
-  chrome.tabs?.onRemoved?.addListener(schedule);
-  chrome.tabs?.onUpdated?.addListener(schedule);
-  chrome.tabGroups?.onCreated?.addListener(schedule);
-  chrome.tabGroups?.onRemoved?.addListener(schedule);
-  chrome.tabGroups?.onUpdated?.addListener(schedule);
+  chrome.tabs?.onActivated?.addListener(scheduleTabs);
+  chrome.tabs?.onAttached?.addListener(scheduleTabs);
+  chrome.tabs?.onCreated?.addListener(scheduleTabs);
+  chrome.tabs?.onDetached?.addListener(scheduleTabs);
+  chrome.tabs?.onMoved?.addListener(scheduleTabs);
+  chrome.tabs?.onRemoved?.addListener(scheduleTabs);
+  chrome.tabs?.onUpdated?.addListener(handleTabUpdated);
+  chrome.tabGroups?.onCreated?.addListener(scheduleTabs);
+  chrome.tabGroups?.onRemoved?.addListener(scheduleTabs);
+  chrome.tabGroups?.onUpdated?.addListener(scheduleTabs);
   chrome.storage?.onChanged?.addListener(handlePopupStorageChanged);
   chrome.runtime?.onMessage?.addListener(message => {
     if (message?.action === 'tabs-changed') {
-      schedule();
+      scheduleTabs();
     }
   });
 }
 
 function initializePopup() {
-  document.addEventListener('error', handlePopupGroupNavImageError, true);
-  document.addEventListener('load', event => {
-    syncPopupShortcutAutoStretchImage(event.target);
-  }, true);
+  document.addEventListener('error', handlePopupImageError, true);
   registerPopupAutoRefresh();
 
   document.addEventListener('click', async e => {
@@ -896,9 +1012,7 @@ function initializePopup() {
       const newView = actionEl.dataset.view === 'tabs' ? 'tabs' : 'shortcuts';
       if (newView === 'tabs' && popupState.view !== 'tabs') {
         popupState.view = 'tabs';
-        await loadPopupState();
-        renderPopupTabs();
-        syncPopupView();
+        await refreshPopupSafely([POPUP_REFRESH_SCOPE.TABS]);
       } else {
         popupState.view = newView;
         syncPopupView();
@@ -907,7 +1021,7 @@ function initializePopup() {
     }
 
     if (action === 'refresh-popup') {
-      await refreshPopup();
+      await refreshPopupSafely(POPUP_FULL_REFRESH_SCOPES);
       return;
     }
 
@@ -918,7 +1032,7 @@ function initializePopup() {
       actionEl.classList.add('is-loading');
       try {
         await chrome.tabs.remove(tabId);
-        await refreshPopup();
+        schedulePopupRefresh([POPUP_REFRESH_SCOPE.TABS], 0);
       } finally {
         actionEl.classList.remove('is-loading');
       }
@@ -943,7 +1057,7 @@ function initializePopup() {
     }
   });
 
-  refreshPopupSafely()
+  refreshPopupSafely(POPUP_INITIAL_REFRESH_SCOPES)
     .then(() => requestAnimationFrame(() => document.body.classList.add('is-ready')))
     .catch(() => {
       renderPopupShortcuts();

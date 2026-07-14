@@ -7,8 +7,9 @@
   const MAX_ENTRY_BYTES = 12 * 1024;
   const MAX_TOTAL_BYTES = 2 * 1024 * 1024;
   const DEFAULT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-  const RENDER_MAX_EDGE = 32;
+  const RENDER_MAX_EDGE = 64;
   const REMEMBER_DEBOUNCE_MS = 400;
+  const adaptiveIconApi = globalScope.TabHarborAdaptiveIcon || {};
 
   let memoryEntries = Object.create(null);
   let initPromise = null;
@@ -70,6 +71,28 @@
       || value.startsWith('chrome://extension-icon/');
   }
 
+  function isExtensionFaviconUrl(url = '') {
+    try {
+      const parsed = new URL(String(url || ''));
+      return parsed.protocol === 'chrome-extension:'
+        && parsed.pathname.replace(/\/+$/, '') === '/_favicon';
+    } catch {
+      return false;
+    }
+  }
+
+  function isDisplayableFaviconUrl(url = '') {
+    const value = String(url || '').trim();
+    if (!value) return false;
+    if (value.startsWith('data:')) return true;
+    if (isExtensionFaviconUrl(value)) return true;
+    try {
+      return ['http:', 'https:'].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }
+
   function isPersistableFaviconUrl(url = '') {
     const value = String(url || '').trim();
     if (!value) return false;
@@ -86,9 +109,9 @@
   function isUsableLiveFaviconUrl(url = '') {
     const value = String(url || '').trim();
     if (!value) return false;
-    if (value.startsWith('data:')) return true;
+    if (isExtensionFaviconUrl(value)) return true;
     if (isChromeInternalFaviconUrl(value)) return false;
-    return isPersistableFaviconUrl(value);
+    return isDisplayableFaviconUrl(value);
   }
 
   function isGoogleFaviconServiceUrl(url = '') {
@@ -123,6 +146,9 @@
         dataUrl: String(entry.dataUrl),
         updatedAt: entry.updatedAt || nowIso(),
         sourceUrl: String(entry.sourceUrl || ''),
+        adaptiveIcon: adaptiveIconApi.normalizeAdaptiveIconMetadata
+          ? adaptiveIconApi.normalizeAdaptiveIconMetadata(entry.adaptiveIcon)
+          : null,
       };
     }
     return {
@@ -175,13 +201,33 @@
     return entry.dataUrl || '';
   }
 
+  function getCachedFaviconEntry(hostname = '') {
+    const key = normalizeFaviconHostname(hostname);
+    if (!key) return null;
+    const entry = memoryEntries[key];
+    if (!isCacheEntryFresh(entry)) return null;
+    return {
+      dataUrl: entry.dataUrl || '',
+      updatedAt: entry.updatedAt || '',
+      sourceUrl: entry.sourceUrl || '',
+      adaptiveIcon: entry.adaptiveIcon || null,
+    };
+  }
+
   function upsertMemoryEntry(hostname, entry) {
     const key = normalizeFaviconHostname(hostname);
     if (!key || !entry?.dataUrl) return false;
+    const dataUrl = String(entry.dataUrl);
+    const existing = memoryEntries[key];
+    const nextAdaptiveIcon = adaptiveIconApi.normalizeAdaptiveIconMetadata
+      ? adaptiveIconApi.normalizeAdaptiveIconMetadata(entry.adaptiveIcon)
+      : null;
     memoryEntries[key] = {
-      dataUrl: String(entry.dataUrl),
+      dataUrl,
       updatedAt: entry.updatedAt || nowIso(),
       sourceUrl: String(entry.sourceUrl || ''),
+      adaptiveIcon: nextAdaptiveIcon
+        || (existing?.dataUrl === dataUrl ? existing.adaptiveIcon || null : null),
     };
     return true;
   }
@@ -236,34 +282,6 @@
     return initPromise;
   }
 
-  function getCodelifeFaviconCandidateUrl(hostname = '', size = 32, pageUrl = '') {
-    const key = normalizeFaviconHostname(hostname || pageUrl);
-    if (!key) return '';
-    const normalizedPage = String(pageUrl || '').trim();
-    let targetUrl = normalizedPage;
-    if (!targetUrl) {
-      try {
-        targetUrl = new URL(`https://${key}/`).toString();
-      } catch {
-        return '';
-      }
-    }
-    try {
-      const parsed = new URL(targetUrl);
-      if (!['http:', 'https:'].includes(parsed.protocol)) return '';
-      const params = new URLSearchParams({
-        client: 'SOCIAL',
-        type: 'FAVICON',
-        fallback_opts: 'TYPE,SIZE,URL',
-        url: parsed.toString(),
-        size: String(size),
-      });
-      return `https://ico.codelife.cc/faviconV2?${params.toString()}`;
-    } catch {
-      return '';
-    }
-  }
-
   function buildFaviconFetchCandidates({ hostname = '', sourceUrl = '', pageUrl = '' } = {}) {
     const key = normalizeFaviconHostname(hostname || pageUrl);
     if (!isCacheableFaviconHostname(key)) return [];
@@ -289,8 +307,8 @@
       }
     }
 
-    pushCandidate(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(key)}&sz=32`);
-    pushCandidate(getCodelifeFaviconCandidateUrl(key, 32, page));
+    // The final network fallback receives only the hostname, never a private path or query.
+    pushCandidate(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(key)}&sz=64`);
     return candidates;
   }
 
@@ -334,7 +352,8 @@
 
   function scheduleFaviconWarmup({ url = '', favIconUrl = '' } = {}) {
     const hostname = normalizeFaviconHostname(url);
-    if (!isCacheableFaviconHostname(hostname) || getCachedDataUrl(hostname)) return;
+    const cachedEntry = getCachedFaviconEntry(hostname);
+    if (!isCacheableFaviconHostname(hostname) || (cachedEntry?.dataUrl && cachedEntry.adaptiveIcon)) return;
 
     const liveSource = String(favIconUrl || '').trim();
     if (liveSource && isPersistableFaviconUrl(liveSource)) {
@@ -354,18 +373,21 @@
     const lookupHostname = normalizeFaviconHostname(displayHostname);
     const sources = Array.isArray(iconData.sources) ? [...iconData.sources] : [];
     if (!lookupHostname) {
-      return { hostname: displayHostname, sources };
+      return { hostname: displayHostname, sources, adaptiveIcon: null };
     }
 
-    const cached = getCachedDataUrl(lookupHostname);
+    const cachedEntry = getCachedFaviconEntry(lookupHostname);
+    const cached = cachedEntry?.dataUrl || '';
+    const adaptiveIcon = cachedEntry?.adaptiveIcon || null;
     if (!cached) {
-      return { hostname: displayHostname, sources };
+      return { hostname: displayHostname, sources, adaptiveIcon };
     }
 
     const withoutDupes = sources.filter(source => source && source !== cached);
     const primary = withoutDupes[0] || '';
-    const isGoogleFallback = /google\.com\/s2\/favicons/i.test(primary);
-    const isLiveFavicon = Boolean(primary && !isGoogleFallback);
+    const isBrowserFallback = isExtensionFaviconUrl(primary)
+      || /google\.com\/s2\/favicons/i.test(primary);
+    const isLiveFavicon = Boolean(primary && !isBrowserFallback);
 
     if (isLiveFavicon) {
       const nextSources = [primary, cached];
@@ -373,14 +395,14 @@
         const source = withoutDupes[index];
         if (source && !nextSources.includes(source)) nextSources.push(source);
       }
-      return { hostname: displayHostname, sources: nextSources };
+      return { hostname: displayHostname, sources: nextSources, adaptiveIcon };
     }
 
     const nextSources = [cached];
     for (const source of withoutDupes) {
       if (source && !nextSources.includes(source)) nextSources.push(source);
     }
-    return { hostname: displayHostname, sources: nextSources };
+    return { hostname: displayHostname, sources: nextSources, adaptiveIcon };
   }
 
   async function blobToRawImageDataUrl(blob) {
@@ -398,18 +420,18 @@
     return dataUrl;
   }
 
-  async function blobToFaviconDataUrl(blob) {
-    if (!blob) return '';
+  async function blobToFaviconCacheValue(blob) {
+    if (!blob) return { dataUrl: '', adaptiveIcon: null };
 
     if (!globalScope.createImageBitmap) {
-      return blobToRawImageDataUrl(blob);
+      return { dataUrl: await blobToRawImageDataUrl(blob), adaptiveIcon: null };
     }
 
     let bitmap;
     try {
       bitmap = await createImageBitmap(blob);
     } catch {
-      return blobToRawImageDataUrl(blob);
+      return { dataUrl: await blobToRawImageDataUrl(blob), adaptiveIcon: null };
     }
     const largestEdge = Math.max(bitmap.width, bitmap.height, 1);
     const scale = Math.min(1, RENDER_MAX_EDGE / largestEdge);
@@ -421,16 +443,29 @@
       : null;
     if (!canvas) {
       bitmap.close?.();
-      return blobToRawImageDataUrl(blob);
+      return { dataUrl: await blobToRawImageDataUrl(blob), adaptiveIcon: null };
     }
 
     const context = canvas.getContext('2d');
     if (!context) {
       bitmap.close?.();
-      return blobToRawImageDataUrl(blob);
+      return { dataUrl: await blobToRawImageDataUrl(blob), adaptiveIcon: null };
     }
 
     context.drawImage(bitmap, 0, 0, width, height);
+    let adaptiveIcon = null;
+    if (adaptiveIconApi.analyzeAdaptiveIconPixels) {
+      try {
+        adaptiveIcon = adaptiveIconApi.analyzeAdaptiveIconPixels(
+          context.getImageData(0, 0, width, height)
+        );
+        adaptiveIcon = adaptiveIconApi.normalizeAdaptiveIconMetadata
+          ? adaptiveIconApi.normalizeAdaptiveIconMetadata(adaptiveIcon)
+          : adaptiveIcon;
+      } catch {
+        adaptiveIcon = null;
+      }
+    }
     bitmap.close?.();
 
     const outputBlob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.82 });
@@ -441,8 +476,10 @@
       binary += String.fromCharCode(bytes[index]);
     }
     const dataUrl = `data:image/webp;base64,${btoa(binary)}`;
-    if (estimateDataUrlBytes(dataUrl) > MAX_ENTRY_BYTES) return '';
-    return dataUrl;
+    if (estimateDataUrlBytes(dataUrl) > MAX_ENTRY_BYTES) {
+      return { dataUrl: '', adaptiveIcon: null };
+    }
+    return { dataUrl, adaptiveIcon };
   }
 
   async function fetchAndStoreFavicon({ hostname = '', sourceUrl = '', pageUrl = '' } = {}) {
@@ -473,13 +510,15 @@
           const blob = await response.blob();
           if (!isFetchResponseUsableForFavicon(response, blob, candidateUrl)) continue;
 
-          const dataUrl = await blobToFaviconDataUrl(blob);
+          const cacheValue = await blobToFaviconCacheValue(blob);
+          const dataUrl = cacheValue.dataUrl;
           if (!dataUrl || estimateDataUrlBytes(dataUrl) > MAX_ENTRY_BYTES) continue;
 
           upsertMemoryEntry(key, {
             dataUrl,
             updatedAt: nowIso(),
             sourceUrl: candidateUrl,
+            adaptiveIcon: cacheValue.adaptiveIcon,
           });
           pendingWrites[key] = memoryEntries[key];
           await persistFaviconCache();
@@ -517,8 +556,11 @@
     estimateDataUrlBytes,
     fetchAndStoreFavicon,
     getCachedDataUrl,
+    getCachedFaviconEntry,
     initFaviconCache,
     isCacheEntryFresh,
+    isDisplayableFaviconUrl,
+    isExtensionFaviconUrl,
     isPersistableFaviconUrl,
     normalizeCacheState,
     normalizeFaviconHostname,
@@ -532,7 +574,6 @@
     rememberFaviconCandidate,
     scheduleFaviconWarmup,
     buildFaviconFetchCandidates,
-    getCodelifeFaviconCandidateUrl,
     upsertMemoryEntry,
   };
 

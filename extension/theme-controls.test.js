@@ -21,13 +21,14 @@ globalThis.window = {
   }),
 };
 
+require('./theme-catalog.js');
+require('./adaptive-icon.js');
 require('./theme-controls.js');
 
 const {
   createShortcutIconCandidates,
   extractShortcutIconCandidatesFromHtml,
   filterRealTabs,
-  getCodelifeFaviconUrl,
   getShortcutIconSearchHostname,
   getShortcutIconTone,
   getShortcutSiteIconData,
@@ -48,6 +49,7 @@ const {
 test('normalizeThemePreferences migrates legacy midnight to dark mist', () => {
   const result = normalizeThemePreferences({ themeId: 'midnight', surfaceOpacity: 19 });
   assert.equal(result.mode, 'dark');
+  assert.equal(result.styleId, 'harbor-mist');
   assert.equal(result.paletteId, 'mist');
   assert.equal(result.surfaceOpacity, 19);
 });
@@ -55,14 +57,23 @@ test('normalizeThemePreferences migrates legacy midnight to dark mist', () => {
 test('normalizeThemePreferences migrates legacy light theme ids to light palette families', () => {
   const result = normalizeThemePreferences({ themeId: 'sage' });
   assert.equal(result.mode, 'light');
+  assert.equal(result.styleId, 'ivory-index');
   assert.equal(result.paletteId, 'ivory');
 });
 
 test('normalizeThemePreferences keeps explicit mode and palette values', () => {
   const result = normalizeThemePreferences({ mode: 'system', paletteId: 'blush', surfaceOpacity: 9 });
   assert.equal(result.mode, 'system');
+  assert.equal(result.styleId, 'clay-notes');
   assert.equal(result.paletteId, 'blush');
   assert.equal(result.surfaceOpacity, 9);
+});
+
+test('normalizeThemePreferences supports the full opacity percentage range', () => {
+  assert.equal(normalizeThemePreferences({ surfaceOpacity: 0 }).surfaceOpacity, 0);
+  assert.equal(normalizeThemePreferences({ surfaceOpacity: 100 }).surfaceOpacity, 100);
+  assert.equal(normalizeThemePreferences({ surfaceOpacity: -1 }).surfaceOpacity, 0);
+  assert.equal(normalizeThemePreferences({ surfaceOpacity: 101 }).surfaceOpacity, 100);
 });
 
 test('normalizeThemePreferences keeps global quick shortcut icon style', () => {
@@ -79,6 +90,18 @@ test('normalizeThemePreferences keeps drawer speed preference', () => {
   assert.equal(result.drawerSpeed, 5);
   assert.equal(normalizeThemePreferences({ drawerSpeed: 99 }).drawerSpeed, 5);
   assert.equal(normalizeThemePreferences({ drawerSpeed: 'bad' }).drawerSpeed, 4);
+});
+
+test('normalizeThemePreferences defaults shortcut reordering off and persists explicit opt-in', () => {
+  assert.equal(normalizeThemePreferences({}).quickShortcutReorderingEnabled, false);
+  assert.equal(
+    normalizeThemePreferences({ quickShortcutReorderingEnabled: true }).quickShortcutReorderingEnabled,
+    true
+  );
+  assert.equal(
+    normalizeThemePreferences({ quickShortcutReorderingEnabled: 'true' }).quickShortcutReorderingEnabled,
+    false
+  );
 });
 
 test('getResolvedTone follows system preference when mode is system', () => {
@@ -98,9 +121,49 @@ test('getResolvedTone follows system preference when mode is system', () => {
 
 test('getResolvedThemeDefinition resolves dark tokens from palette family', () => {
   const theme = getResolvedThemeDefinition({ mode: 'dark', paletteId: 'paper' });
-  assert.equal(theme.name, 'Paper');
+  assert.equal(theme.id, 'paper-desk');
+  assert.equal(theme.styleId, 'paper-desk');
+  assert.equal(theme.paletteId, 'paper');
+  assert.equal(theme.name, 'Paper desk');
   assert.equal(theme.tone, 'dark');
   assert.equal(theme.vars['--paper'], '#17130f');
+  assert.equal(theme.vars['--th-card-radius'], 'var(--th-radius-lg)');
+});
+
+test('normalizeThemePreferences prefers canonical style id over compatibility palette id', () => {
+  const result = normalizeThemePreferences({
+    styleId: 'porcelain-atlas',
+    paletteId: 'blush',
+  });
+
+  assert.equal(result.styleId, 'porcelain-atlas');
+  assert.equal(result.paletteId, 'porcelain');
+});
+
+test('normalizeThemePreferences migrates removed canonical style ids', () => {
+  const editorial = normalizeThemePreferences({ styleId: 'editorial-grid' });
+  const archive = normalizeThemePreferences({ styleId: 'archive-ledger' });
+
+  assert.equal(editorial.styleId, 'porcelain-atlas');
+  assert.equal(editorial.paletteId, 'porcelain');
+  assert.equal(archive.styleId, 'botanical-folio');
+  assert.equal(archive.paletteId, 'botanical');
+});
+
+test('normalizeThemePreferences falls back unknown styles to paper desk', () => {
+  const result = normalizeThemePreferences({ styleId: 'unknown-style' });
+  assert.equal(result.styleId, 'paper-desk');
+  assert.equal(result.paletteId, 'paper');
+});
+
+test('normalizeThemePreferences uses compatibility palette when canonical style is unknown', () => {
+  const result = normalizeThemePreferences({
+    styleId: 'future-style',
+    paletteId: 'blush',
+  });
+
+  assert.equal(result.styleId, 'clay-notes');
+  assert.equal(result.paletteId, 'blush');
 });
 
 // ---- filterRealTabs ----
@@ -222,8 +285,31 @@ test('normalizeQuickShortcuts defaults iconKind to empty string for no icon', ()
   const result = normalizeQuickShortcuts(input);
   assert.equal(result[0].iconKind, '');
   assert.equal(result[0].iconMask, 'none');
+  assert.equal(result[0].iconPresentation, 'auto');
   assert.equal('iconSize' in result[0], false);
   assert.equal('iconMaskRadius' in result[0], false);
+});
+
+test('normalizeQuickShortcuts keeps icon fitting independent from the legacy mask', () => {
+  const result = normalizeQuickShortcuts([
+    {
+      id: 'fill',
+      url: 'https://fill.example',
+      iconPresentation: 'fill',
+      iconMask: 'rounded',
+    },
+    {
+      id: 'invalid',
+      url: 'https://invalid.example',
+      iconPresentation: 'crop-everything',
+      iconMask: 'none',
+    },
+  ]);
+
+  assert.equal(result[0].iconPresentation, 'fill');
+  assert.equal(result[0].iconMask, 'rounded');
+  assert.equal(result[1].iconPresentation, 'auto');
+  assert.equal(result[1].iconMask, 'none');
 });
 
 test('normalizeQuickShortcuts infers iconKind from icon content', () => {
@@ -325,17 +411,6 @@ test('getShortcutIconTone returns stable quiet tone ids for hostnames', () => {
   assert.equal(first, second);
   assert.match(first, /^(amber|chamomile|mist|rose|slate)$/);
   assert.equal(getShortcutIconTone(''), 'neutral');
-});
-
-test('getCodelifeFaviconUrl follows the iTab favicon service shape', () => {
-  const iconUrl = getCodelifeFaviconUrl('https://github.com/V-IOLE-T', 64);
-
-  assert.ok(iconUrl.startsWith('https://ico.codelife.cc/faviconV2?'));
-  assert.ok(iconUrl.includes('client=SOCIAL'));
-  assert.ok(iconUrl.includes('type=FAVICON'));
-  assert.ok(iconUrl.includes('fallback_opts=TYPE%2CSIZE%2CURL'));
-  assert.ok(iconUrl.includes('url=https%3A%2F%2Fgithub.com%2FV-IOLE-T'));
-  assert.ok(iconUrl.includes('size=64'));
 });
 
 test('extractShortcutIconCandidatesFromHtml reads declared site icons', () => {

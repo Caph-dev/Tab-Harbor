@@ -668,6 +668,9 @@ async function renderDeferredColumn({ contentScope = 'all' } = {}) {
       if (triggerStack) drawerApplyDomTranslations(triggerStack);
     }
 
+    // Keep the shell and trigger state current without building hidden lists.
+    if (!deferredPanelOpen) return;
+
     const shouldRenderSaved = contentScope === 'all' || drawerView === 'saved';
     const shouldRenderTodos = contentScope === 'all' || drawerView === 'todos';
 

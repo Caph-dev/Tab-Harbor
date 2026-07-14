@@ -106,6 +106,7 @@ test('legacy quick shortcuts migrate into individual sync item keys', async () =
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].icon, '★');
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconKind, 'glyph');
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconMask, 'rounded');
+  assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconPresentation, 'auto');
   assert.deepEqual(stores.sync['tabHarbor.shortcut.order'].ids, ['shortcut-1']);
   assert.equal(stores.sync['tabHarbor.shortcut.meta'].schemaVersion, 1);
 });
@@ -124,6 +125,7 @@ test('split sync shortcut items merge back into local cache by stored order', as
         icon: '',
         iconKind: 'site',
         iconMask: 'none',
+        iconPresentation: 'fill',
         createdAt: '2026-01-02T00:00:00.000Z',
         updatedAt: '2026-01-02T00:00:00.000Z',
       },
@@ -134,6 +136,7 @@ test('split sync shortcut items merge back into local cache by stored order', as
         icon: '<svg viewBox="0 0 1 1"></svg>',
         iconKind: 'svg',
         iconMask: 'rounded',
+        iconPresentation: 'glyph',
         createdAt: '2026-01-03T00:00:00.000Z',
         updatedAt: '2026-01-03T00:00:00.000Z',
       },
@@ -149,6 +152,8 @@ test('split sync shortcut items merge back into local cache by stored order', as
   assert.deepEqual(stores.local.quickShortcuts.map(item => item.id), ['b', 'a']);
   assert.equal(stores.local.quickShortcuts[0].iconKind, 'svg');
   assert.equal(stores.local.quickShortcuts[0].iconMask, 'rounded');
+  assert.equal(stores.local.quickShortcuts[0].iconPresentation, 'glyph');
+  assert.equal(stores.local.quickShortcuts[1].iconPresentation, 'fill');
 });
 
 test('remove writes a shortcut tombstone so stale local cache does not revive it', async () => {
@@ -282,6 +287,7 @@ test('large data image is kept in local cache but omitted from sync payload', as
           icon: bigIcon,
           iconKind: 'image',
           iconMask: 'rounded',
+          iconPresentation: 'glyph',
         },
       ],
     },
@@ -293,6 +299,8 @@ test('large data image is kept in local cache but omitted from sync payload', as
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].icon, '');
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconKind, 'image');
   assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconOmitted, true);
+  assert.equal(stores.sync['tabHarbor.shortcut.item.shortcut-1'].iconPresentation, 'glyph');
+  assert.equal(stores.local.quickShortcuts[0].iconPresentation, 'glyph');
 });
 
 test('lightweight remote and SVG icons are written to sync', async () => {

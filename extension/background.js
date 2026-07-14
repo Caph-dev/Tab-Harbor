@@ -12,6 +12,12 @@ try {
 }
 
 try {
+  importScripts('adaptive-icon.js');
+} catch (error) {
+  console.warn('[tab-harbor bg] Adaptive icon module failed to load:', error);
+}
+
+try {
   importScripts('favicon-cache.js');
 } catch (error) {
   console.warn('[tab-harbor bg] Favicon cache module failed to load:', error);
@@ -55,6 +61,13 @@ const LOCAL_BACKUP_PENDING_ALARM_NAME = 'tab-harbor-local-backup-pending';
 const LOCAL_BACKUP_CHANGE_DELAY_MINUTES = 1;
 const LOCAL_BACKUP_STALE_AFTER_MS = 6 * 60 * 60 * 1000;
 const LOCAL_BACKUP_PERIOD_MINUTES = 24 * 60;
+const TAB_REFRESH_DEBOUNCE_MS = 120;
+const TAB_REFRESH_MAX_WAIT_MS = 500;
+
+let tabRefreshTimer = 0;
+let tabRefreshBurstStartedAt = 0;
+let tabRefreshInFlight = null;
+let tabRefreshDirty = false;
 
 const debugLog = (...args) => {
   if (TAB_HARBOR_BACKGROUND_DEBUG) console.log(...args);
@@ -237,7 +250,7 @@ async function notifyTabHarborPages() {
 
     // Send message to each Tab Harbor page to refresh
     let successCount = 0;
-    for (const tab of dashboardTabs) {
+    await Promise.all(dashboardTabs.map(async tab => {
       try {
         await chrome.tabs.sendMessage(tab.id, { action: 'tabs-changed' });
         debugLog(`[tab-harbor bg] Notified tab ${tab.id}`);
@@ -252,12 +265,45 @@ async function notifyTabHarborPages() {
           debugLog(`[tab-harbor bg] Skipped notify tab ${tab.id} (no listener):`, message);
         }
       }
-    }
+    }));
 
     debugLog(`[tab-harbor bg] Successfully notified ${successCount}/${dashboardTabs.length} page(s)`);
   } catch (err) {
     console.warn('[tab-harbor bg] Error in notifyTabHarborPages:', err);
   }
+}
+
+function runScheduledTabHarborRefresh() {
+  tabRefreshTimer = 0;
+  tabRefreshBurstStartedAt = 0;
+
+  if (tabRefreshInFlight) {
+    tabRefreshDirty = true;
+    return tabRefreshInFlight;
+  }
+
+  tabRefreshInFlight = notifyTabHarborPages().finally(() => {
+    tabRefreshInFlight = null;
+    if (!tabRefreshDirty) return;
+    tabRefreshDirty = false;
+    scheduleTabHarborRefresh();
+  });
+  return tabRefreshInFlight;
+}
+
+function scheduleTabHarborRefresh() {
+  if (tabRefreshInFlight) {
+    tabRefreshDirty = true;
+    return;
+  }
+
+  const now = Date.now();
+  if (!tabRefreshBurstStartedAt) tabRefreshBurstStartedAt = now;
+  const elapsed = now - tabRefreshBurstStartedAt;
+  const delay = Math.max(0, Math.min(TAB_REFRESH_DEBOUNCE_MS, TAB_REFRESH_MAX_WAIT_MS - elapsed));
+
+  if (tabRefreshTimer) clearTimeout(tabRefreshTimer);
+  tabRefreshTimer = setTimeout(runScheduledTabHarborRefresh, delay);
 }
 
 // Update badge when the extension is first installed
@@ -313,15 +359,13 @@ chrome.storage?.onChanged?.addListener((changes, areaName) => {
 
 // Update badge and notify Tab Harbor pages whenever a tab is opened
 chrome.tabs.onCreated.addListener(tab => {
-  updateBadge();
   rememberTabFavicon(tab);
-  notifyTabHarborPages();
+  scheduleTabHarborRefresh();
 });
 
 // Update badge and notify Tab Harbor pages whenever a tab is closed
 chrome.tabs.onRemoved.addListener(() => {
-  updateBadge();
-  notifyTabHarborPages();
+  scheduleTabHarborRefresh();
 });
 
 // Update badge and notify Tab Harbor pages when a tab's URL changes (e.g. navigating to/from chrome://)
@@ -332,8 +376,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
   // Only notify on status or URL changes, not title/favicon updates
   if (!changeInfo.status && !changeInfo.url) return;
-  updateBadge();
-  notifyTabHarborPages();
+  scheduleTabHarborRefresh();
 });
 
 // ─── Initial run ─────────────────────────────────────────────────────────────
@@ -342,6 +385,3 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 updateBadge();
 ensureLocalBackupAlarm();
 void scheduleLocalBackupIfStale();
-if (faviconCacheApi?.initFaviconCache) {
-  void faviconCacheApi.initFaviconCache().then(() => seedFaviconCacheFromOpenTabs());
-}

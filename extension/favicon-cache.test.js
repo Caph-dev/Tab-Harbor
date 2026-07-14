@@ -3,15 +3,20 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const { analyzeAdaptiveIconPixels } = require('./adaptive-icon.js');
+
 const {
   applyCacheState,
   buildFaviconFetchCandidates,
   enrichIconSources,
   estimateDataUrlBytes,
   getCachedDataUrl,
+  getCachedFaviconEntry,
   isCacheEntryFresh,
   isCacheableFaviconHostname,
   isChromeInternalFaviconUrl,
+  isDisplayableFaviconUrl,
+  isExtensionFaviconUrl,
   isFetchResponseUsableForFavicon,
   isPersistableFaviconUrl,
   isUsableLiveFaviconUrl,
@@ -20,6 +25,12 @@ const {
   pruneFaviconEntries,
   upsertMemoryEntry,
 } = require('./favicon-cache.js');
+
+function makeOpaqueImageData(size = 4) {
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let index = 3; index < data.length; index += 4) data[index] = 255;
+  return { width: size, height: size, data };
+}
 
 test('normalizeFaviconHostname strips www and lowercases', () => {
   assert.equal(normalizeFaviconHostname('https://WWW.Example.com/path'), 'example.com');
@@ -38,6 +49,14 @@ test('chrome internal favicon urls are not usable as live img sources', () => {
   assert.equal(isPersistableFaviconUrl(chromeFavicon), false);
   assert.equal(isUsableLiveFaviconUrl(chromeFavicon), false);
   assert.equal(isUsableLiveFaviconUrl('https://example.com/icon.png'), true);
+});
+
+test('extension favicon urls are displayable without becoming persistent fetch candidates', () => {
+  const extensionFavicon = 'chrome-extension://abc/_favicon/?pageUrl=https%3A%2F%2Fexample.com&size=64';
+  assert.equal(isExtensionFaviconUrl(extensionFavicon), true);
+  assert.equal(isDisplayableFaviconUrl(extensionFavicon), true);
+  assert.equal(isUsableLiveFaviconUrl(extensionFavicon), true);
+  assert.equal(isPersistableFaviconUrl(extensionFavicon), false);
 });
 
 test('pruneFaviconEntries enforces max entry count by recency', () => {
@@ -117,6 +136,38 @@ test('getCachedDataUrl returns fresh entries only', () => {
   }).entries['stale.com']), false);
 });
 
+test('favicon cache preserves adaptive analysis without trusting stored treatment', () => {
+  const adaptiveIcon = analyzeAdaptiveIconPixels(makeOpaqueImageData());
+  const normalized = normalizeCacheState({
+    entries: {
+      'example.com': {
+        dataUrl: 'data:image/webp;base64,ADAPTIVE',
+        updatedAt: new Date().toISOString(),
+        adaptiveIcon: { ...adaptiveIcon, treatment: 'glyph' },
+      },
+    },
+  });
+
+  assert.equal(normalized.entries['example.com'].adaptiveIcon.treatment, 'tile');
+  applyCacheState(normalized);
+  assert.equal(getCachedFaviconEntry('example.com').adaptiveIcon.treatment, 'tile');
+});
+
+test('favicon cache drops malformed analysis without dropping the image', () => {
+  const normalized = normalizeCacheState({
+    entries: {
+      'example.com': {
+        dataUrl: 'data:image/webp;base64,IMAGE',
+        updatedAt: new Date().toISOString(),
+        adaptiveIcon: { v: 99 },
+      },
+    },
+  });
+
+  assert.equal(normalized.entries['example.com'].dataUrl, 'data:image/webp;base64,IMAGE');
+  assert.equal(normalized.entries['example.com'].adaptiveIcon, null);
+});
+
 test('estimateDataUrlBytes approximates base64 payload size', () => {
   const dataUrl = 'data:image/webp;base64,YWJj';
   assert.equal(estimateDataUrlBytes(dataUrl), 3);
@@ -135,12 +186,13 @@ test('isCacheableFaviconHostname rejects chrome internal hosts', () => {
   assert.equal(isCacheableFaviconHostname('chrome-extension'), false);
 });
 
-test('buildFaviconFetchCandidates falls back to origin favicon and google', () => {
+test('buildFaviconFetchCandidates never sends private page paths to third parties', () => {
   const candidates = buildFaviconFetchCandidates({
-    pageUrl: 'https://axonhub.caph.me/',
+    pageUrl: 'https://axonhub.caph.me/private/project?token=secret',
   });
 
   assert.equal(candidates[0], 'https://axonhub.caph.me/favicon.ico');
   assert.match(candidates[1], /google\.com\/s2\/favicons/);
-  assert.match(candidates[2], /ico\.codelife\.cc\/faviconV2/);
+  assert.equal(candidates.length, 2);
+  assert.doesNotMatch(candidates.join('\n'), /private|project|token|secret|codelife/i);
 });

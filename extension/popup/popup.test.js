@@ -53,6 +53,7 @@ globalThis.TabHarborI18n = { t: key => key };
 globalThis.LOCAL_LANDING_PAGE_PATTERNS = undefined;
 globalThis.LOCAL_CUSTOM_GROUPS = undefined;
 
+require('../adaptive-icon.js');
 require('./popup.js');
 
 const {
@@ -413,6 +414,17 @@ test('renderShortcutCard renders site icon source and tone', () => {
   globalThis._popupIcons.getIconSources = () => ({
     sources: ['https://www.google.com/s2/favicons?domain=github.com&sz=32'],
     hostname: 'github.com',
+    adaptiveIcon: {
+      v: 2,
+      width: 32,
+      height: 32,
+      alphaCoverage: 1,
+      edgeCoverage: 1,
+      cornerCoverage: 1,
+      contentBounds: { x: 0, y: 0, width: 1, height: 1 },
+      visualCenter: { x: 0.5, y: 0.5 },
+      silhouette: { circle: 0.78, roundedSquare: 0.95, square: 1 },
+    },
   });
 
   try {
@@ -424,13 +436,20 @@ test('renderShortcutCard renders site icon source and tone', () => {
 
     assert.ok(html.includes('data-icon-source="site"'));
     assert.ok(html.includes('data-icon-tone="chamomile"'));
-    assert.ok(html.includes('src="https://www.google.com/s2/favicons?domain=github.com&sz=32"'));
+    assert.ok(html.includes('data-icon-presentation="auto"'));
+    assert.ok(html.includes('data-icon-treatment="tile"'));
+    assert.ok(html.includes('data-icon-plate="none"'));
+    assert.ok(html.includes('data-icon-fit="cover"'));
+    assert.ok(html.includes('has-icon-treatment-tile'));
+    assert.ok(html.includes('has-icon-plate-none'));
+    assert.ok(html.includes('has-icon-fit-cover'));
+    assert.ok(html.includes('src="https://www.google.com/s2/favicons?domain=github.com&amp;sz=32"'));
   } finally {
     globalThis._popupIcons.getIconSources = originalGetIconSources;
   }
 });
 
-test('renderShortcutCard renders rounded icon mask settings', () => {
+test('renderShortcutCard keeps rounded custom icons contained without automatic cropping', () => {
   const shortcut = {
     label: 'GitHub',
     url: 'https://github.com',
@@ -443,10 +462,47 @@ test('renderShortcutCard renders rounded icon mask settings', () => {
   const html = renderShortcutCard(shortcut, 0);
 
   assert.ok(html.includes('has-rounded-icon-mask'));
+  assert.ok(html.includes('data-icon-treatment="original"'));
+  assert.ok(html.includes('has-icon-treatment-original'));
   assert.ok(html.includes('--shortcut-icon-size:34px'));
   assert.ok(html.includes('--shortcut-icon-radius:9px'));
-  assert.ok(html.includes('quick-shortcut-icon-auto-stretch'));
-  assert.ok(html.includes('data-auto-stretch-icon="true"'));
+  assert.ok(!html.includes('quick-shortcut-icon-auto-stretch'));
+  assert.ok(!html.includes('data-auto-stretch-icon="true"'));
+});
+
+test('renderShortcutCard applies an explicit glyph fitting override', () => {
+  const html = renderShortcutCard({
+    label: 'Wordmark',
+    url: 'https://wordmark.example',
+    iconKind: 'image',
+    icon: 'https://wordmark.example/brand.png',
+    iconPresentation: 'glyph',
+  }, 0);
+
+  assert.ok(html.includes('data-icon-presentation="glyph"'));
+  assert.ok(html.includes('data-icon-treatment="glyph"'));
+  assert.ok(html.includes('has-icon-treatment-glyph'));
+});
+
+test('renderShortcutCard emits a local fallback source for failed site icons', () => {
+  const originalGetIconSources = globalThis._popupIcons.getIconSources;
+  globalThis._popupIcons.getIconSources = () => ({
+    sources: ['chrome-extension://test/_favicon/?pageUrl=example', 'data:image/png;base64,CACHED'],
+    hostname: 'example.com',
+  });
+
+  try {
+    const html = renderShortcutCard({
+      label: 'Example',
+      url: 'https://example.com',
+    }, 0);
+
+    assert.ok(html.includes('src="chrome-extension://test/_favicon/?pageUrl=example"'));
+    assert.ok(html.includes('data-fallback-src="data:image/png;base64,CACHED"'));
+    assert.ok(html.includes('quick-shortcut-fallback'));
+  } finally {
+    globalThis._popupIcons.getIconSources = originalGetIconSources;
+  }
 });
 
 test('renderShortcutCard ignores per-shortcut rounded icon radius', () => {

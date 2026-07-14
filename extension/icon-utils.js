@@ -15,6 +15,29 @@
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=${size}`;
   }
 
+  function getFaviconRequestSize(size = 16) {
+    const cssSize = Math.max(16, Number(size) || 16);
+    const pixelRatio = Math.max(1, Number(globalScope.devicePixelRatio) || 1);
+    return Math.min(64, cssSize * pixelRatio) > 32 ? 64 : 32;
+  }
+
+  function getChromeFaviconUrl(pageUrl, size = 16) {
+    const value = String(pageUrl || '').trim();
+    const getUrl = globalScope.chrome?.runtime?.getURL;
+    if (!value || typeof getUrl !== 'function') return '';
+
+    try {
+      const page = new URL(value);
+      if (!['http:', 'https:'].includes(page.protocol)) return '';
+      const faviconUrl = new URL(getUrl('/_favicon/'));
+      faviconUrl.searchParams.set('pageUrl', page.toString());
+      faviconUrl.searchParams.set('size', String(getFaviconRequestSize(size)));
+      return faviconUrl.toString();
+    } catch {
+      return '';
+    }
+  }
+
   function escapeHtml(value = '') {
     return String(value)
       .replace(/&/g, '&amp;')
@@ -56,9 +79,10 @@
       : (faviconCache?.isPersistableFaviconUrl?.(favIconUrl) ? favIconUrl : '');
 
     if (liveFaviconUrl) sources.push(liveFaviconUrl);
-    if (hostname) sources.push(getGoogleFaviconUrl(hostname, size));
+    const chromeFaviconUrl = getChromeFaviconUrl(url, size);
+    if (chromeFaviconUrl) sources.push(chromeFaviconUrl);
 
-    const base = { hostname, sources };
+    const base = { hostname, sources, adaptiveIcon: null };
     if (!faviconCache?.enrichIconSources) {
       return base;
     }
@@ -75,20 +99,23 @@
   function getGroupIcon(group, label, size = 32) {
     const tabs = group?.tabs || [];
     const preferredTab = tabs.find(tab => tab?.favIconUrl) || tabs[0] || {};
-    const { hostname, sources } = getIconSources(preferredTab, size);
+    const { hostname, sources, adaptiveIcon } = getIconSources(preferredTab, size);
 
     return {
       hostname,
       src: sources[0] || '',
       fallbackSrc: sources[1] || '',
       fallbackLabel: getFallbackLabel(label, hostname),
+      adaptiveIcon: adaptiveIcon || null,
     };
   }
 
   const api = {
     escapeHtml,
     escapeHtmlAttribute,
+    getChromeFaviconUrl,
     getFallbackLabel,
+    getFaviconRequestSize,
     getGoogleFaviconUrl,
     getGroupIcon,
     getHostname,

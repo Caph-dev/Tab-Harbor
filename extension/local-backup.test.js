@@ -114,10 +114,15 @@ test('createBackupDataUrl encodes readable JSON payload', () => {
   assert.equal(decoded.storage.local.deferred[0].id, 'saved-1');
 });
 
-test('isRelevantStorageChange ignores only backup metadata writes', () => {
+test('isRelevantStorageChange ignores metadata and reconstructible cache writes', () => {
   assert.equal(isRelevantStorageChange({}, 'local'), false);
   assert.equal(isRelevantStorageChange({ [BACKUP_META_KEY]: { newValue: {} } }, 'local'), false);
+  assert.equal(isRelevantStorageChange({ 'tabHarbor.favicon.cache': { newValue: {} } }, 'local'), false);
+  assert.equal(isRelevantStorageChange({ 'tabHarbor.favicon.entry.example': { newValue: {} } }, 'local'), false);
+  assert.equal(isRelevantStorageChange({ 'tabHarbor.favicon.index': { newValue: {} } }, 'local'), false);
   assert.equal(isRelevantStorageChange({ deferred: { newValue: [] } }, 'local'), true);
+  assert.equal(isRelevantStorageChange({ 'tabHarbor.favicon.cache': {}, deferred: {} }, 'local'), true);
+  assert.equal(isRelevantStorageChange({ 'tabHarbor.favicon.cache': {} }, 'sync'), true);
   assert.equal(isRelevantStorageChange({ [BACKUP_META_KEY]: {}, deferred: {} }, 'local'), true);
   assert.equal(isRelevantStorageChange({ deferred: {} }, 'managed'), false);
 });

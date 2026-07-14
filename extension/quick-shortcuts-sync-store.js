@@ -16,6 +16,7 @@
   const LIGHTWEIGHT_GLYPH_MAX_CHARS = 32;
   const LEGACY_LOCAL_FALLBACK_TIME = '1970-01-01T00:00:00.000Z';
   const VALID_ICON_KINDS = new Set(['site', 'glyph', 'image', 'svg']);
+  const VALID_ICON_PRESENTATIONS = new Set(['auto', 'original', 'glyph', 'fill']);
 
   let shortcutsSyncInitPromise = null;
   let shortcutsSyncInitialized = false;
@@ -51,6 +52,11 @@
   function normalizeIconKind(value) {
     const kind = String(value || '').trim();
     return VALID_ICON_KINDS.has(kind) ? kind : '';
+  }
+
+  function normalizeIconPresentation(value) {
+    const presentation = String(value || '').trim();
+    return VALID_ICON_PRESENTATIONS.has(presentation) ? presentation : 'auto';
   }
 
   function isSvgMarkup(value) {
@@ -97,6 +103,7 @@
       icon: icon.value,
       iconKind: icon.kind || explicitIconKind,
       iconMask: item.iconMask === 'rounded' ? 'rounded' : 'none',
+      iconPresentation: normalizeIconPresentation(item.iconPresentation),
       createdAt: item.createdAt || fallbackTime,
       dismissed,
       deletedAt,
@@ -156,6 +163,7 @@
       icon: localItem.icon,
       iconKind: localItem.iconKind || item.iconKind,
       iconMask: localItem.iconMask || item.iconMask,
+      iconPresentation: item.iconPresentation || localItem.iconPresentation || 'auto',
     };
   }
 
@@ -410,6 +418,7 @@
       icon: iconPayload.icon,
       iconKind: iconPayload.iconKind,
       iconMask: normalized.iconMask,
+      iconPresentation: normalized.iconPresentation,
       createdAt: normalized.createdAt,
       dismissed: Boolean(normalized.dismissed),
       deletedAt: normalized.deletedAt || null,
@@ -559,7 +568,8 @@
         existing.label !== item.label ||
         existing.icon !== item.icon ||
         existing.iconKind !== item.iconKind ||
-        existing.iconMask !== item.iconMask;
+        existing.iconMask !== item.iconMask ||
+        existing.iconPresentation !== item.iconPresentation;
       nextActive.push(normalizeShortcutItem({
         ...existing,
         ...item,

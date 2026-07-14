@@ -32,6 +32,27 @@ const {
   STORAGE_KEY: themeFaviconStorageKey,
 } = globalThis.TabHarborFaviconCache || {};
 
+const {
+  createAdaptiveIconViewModel: themeCreateAdaptiveIconViewModel,
+  normalizeAdaptiveIconPresentation: themeNormalizeAdaptiveIconPresentation,
+} = globalThis.TabHarborAdaptiveIcon || {};
+
+const themeCatalogApi = globalThis.TabHarborThemeCatalog;
+if (!themeCatalogApi) {
+  throw new Error('TabHarborThemeCatalog must load before theme-controls.js');
+}
+
+const {
+  MODE_ORDER: themeCatalogModeOrder,
+  STYLE_ORDER: themeCatalogStyleOrder,
+  LEGACY_THEME_MIGRATION: themeCatalogLegacyMigration,
+  resolveKnownStyleId: themeCatalogResolveKnownStyleId,
+  normalizeStyleId: themeCatalogNormalizeStyleId,
+  getStyle: themeCatalogGetStyle,
+  getLegacyPaletteId: themeCatalogGetLegacyPaletteId,
+  getPreviewStyle: themeCatalogGetPreviewStyle,
+} = themeCatalogApi;
+
 let themeFaviconRefreshListenerAttached = false;
 
 function ensureThemeFaviconRefreshListener() {
@@ -53,17 +74,12 @@ let shortcutEditorState = {
   label: '',
   icon: '',
   iconKind: '',
+  iconPresentation: 'auto',
   presentation: 'default',
   returnToTabPicker: false,
   focusReturnEl: null,
 };
-let quickShortcutDragState = null;
-let quickShortcutDraggedId = '';
-let quickShortcutDraggedEl = null;
-let quickShortcutGhostEl = null;
-let quickShortcutSlotEl = null;
-let quickShortcutSuppressClickUntil = 0;
-let quickShortcutMiddleClickSuppressUntil = 0;
+let quickShortcutsController = null;
 let shortcutIconSearchState = {
   token: 0,
   status: 'idle',
@@ -89,10 +105,6 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-const THEME_MODE_ORDER = ['system', 'light', 'dark'];
-const THEME_PALETTE_ORDER = ['paper', 'ivory', 'mist', 'blush'];
-const VALID_THEME_MODES = new Set(THEME_MODE_ORDER);
-const VALID_THEME_PALETTES = new Set(THEME_PALETTE_ORDER);
 const SHORTCUT_ICON_SEARCH_TIMEOUT = 2600;
 const SHORTCUT_ICON_DEFAULT_SIZE = 32;
 const SHORTCUT_ICON_MASK_SIZE = 36;
@@ -117,178 +129,9 @@ const THEME_MODE_LABEL_KEYS = {
   light: 'themeModeLight',
   dark: 'themeModeDark',
 };
-const LEGACY_THEME_MIGRATION = {
-  paper: { mode: 'light', paletteId: 'paper' },
-  sage: { mode: 'light', paletteId: 'ivory' },
-  mist: { mode: 'light', paletteId: 'mist' },
-  blush: { mode: 'light', paletteId: 'blush' },
-  midnight: { mode: 'dark', paletteId: 'mist' },
-};
-const THEME_FAMILIES = {
-  paper: {
-    name: 'Paper',
-    meta: 'Quiet parchment',
-    light: {
-      '--ink': '#211c17',
-      '--paper': '#f6f0e7',
-      '--warm-gray': '#ded4c8',
-      '--muted': '#81776e',
-      '--accent-amber': '#9d6840',
-      '--accent-chamomile': '#b89863',
-      '--accent-slate': '#66727d',
-      '--accent-rose': '#9d655c',
-      '--workspace-accent': '#7e5d3e',
-      '--workspace-accent-soft': '#eadccc',
-      '--workspace-accent-border': '#c9a986',
-      '--workspace-accent-contrast': '#fffaf2',
-      '--status-active': '#526f55',
-      '--status-cooling': '#9a7538',
-      '--status-abandoned': '#9d655c',
-      '--card-bg': '#fffaf2',
-    },
-    dark: {
-      '--ink': '#ebe2d6',
-      '--paper': '#17130f',
-      '--warm-gray': '#2b241d',
-      '--muted': '#94877a',
-      '--accent-amber': '#c28a5a',
-      '--accent-chamomile': '#c9ad75',
-      '--accent-slate': '#84909a',
-      '--accent-rose': '#bd7770',
-      '--workspace-accent': '#b4865e',
-      '--workspace-accent-soft': '#2c241d',
-      '--workspace-accent-border': '#6b563f',
-      '--workspace-accent-contrast': '#17130f',
-      '--status-active': '#86a184',
-      '--status-cooling': '#c49a5f',
-      '--status-abandoned': '#c98279',
-      '--card-bg': '#211b15',
-    },
-  },
-  ivory: {
-    name: 'Ivory',
-    meta: 'Cool ivory',
-    light: {
-      '--ink': '#1d2024',
-      '--paper': '#f6f7f9',
-      '--warm-gray': '#e1e4e8',
-      '--muted': '#7e848c',
-      '--accent-amber': '#9a8054',
-      '--accent-chamomile': '#a39c78',
-      '--accent-slate': '#5f6b78',
-      '--accent-rose': '#9c7072',
-      '--workspace-accent': '#6b7480',
-      '--workspace-accent-soft': '#e3e6ea',
-      '--workspace-accent-border': '#aab1ba',
-      '--workspace-accent-contrast': '#fafbfc',
-      '--status-active': '#557a6e',
-      '--status-cooling': '#9a8054',
-      '--status-abandoned': '#9c6a6e',
-      '--card-bg': '#fcfdfe',
-    },
-    dark: {
-      '--ink': '#dde1e6',
-      '--paper': '#101216',
-      '--warm-gray': '#1e2127',
-      '--muted': '#868c95',
-      '--accent-amber': '#ad9670',
-      '--accent-chamomile': '#ada579',
-      '--accent-slate': '#8995a2',
-      '--accent-rose': '#b87c7f',
-      '--workspace-accent': '#9aa3ac',
-      '--workspace-accent-soft': '#1f2228',
-      '--workspace-accent-border': '#586069',
-      '--workspace-accent-contrast': '#0e1012',
-      '--status-active': '#7aa099',
-      '--status-cooling': '#ad9670',
-      '--status-abandoned': '#b87a7e',
-      '--card-bg': '#171a1e',
-    },
-  },
-  mist: {
-    name: 'Mist',
-    meta: 'Harbor fog',
-    light: {
-      '--ink': '#151c22',
-      '--paper': '#edf2f4',
-      '--warm-gray': '#d7e0e4',
-      '--muted': '#75818a',
-      '--accent-amber': '#8d7358',
-      '--accent-chamomile': '#b5966a',
-      '--accent-slate': '#4f6d80',
-      '--accent-rose': '#986b70',
-      '--workspace-accent': '#4f6f88',
-      '--workspace-accent-soft': '#dbe7ef',
-      '--workspace-accent-border': '#a5b7c5',
-      '--workspace-accent-contrast': '#f7fbfd',
-      '--status-active': '#557268',
-      '--status-cooling': '#917653',
-      '--status-abandoned': '#94636c',
-      '--card-bg': '#fbfdfe',
-    },
-    dark: {
-      '--ink': '#dde5e8',
-      '--paper': '#121920',
-      '--warm-gray': '#222c33',
-      '--muted': '#6f7a82',
-      '--accent-amber': '#b09472',
-      '--accent-chamomile': '#c4a576',
-      '--accent-slate': '#83a5b8',
-      '--accent-rose': '#bd8185',
-      '--workspace-accent': '#8eb0c2',
-      '--workspace-accent-soft': '#23303a',
-      '--workspace-accent-border': '#526a78',
-      '--workspace-accent-contrast': '#10181d',
-      '--status-active': '#8aa99b',
-      '--status-cooling': '#c1a176',
-      '--status-abandoned': '#cf858b',
-      '--card-bg': '#19232b',
-    },
-  },
-  blush: {
-    name: 'Blush',
-    meta: 'Clay dusk',
-    light: {
-      '--ink': '#221817',
-      '--paper': '#f5eeeb',
-      '--warm-gray': '#e5d6d1',
-      '--muted': '#8f7974',
-      '--accent-amber': '#9b6e52',
-      '--accent-chamomile': '#b8926a',
-      '--accent-slate': '#6b7378',
-      '--accent-rose': '#a86462',
-      '--workspace-accent': '#9b646b',
-      '--workspace-accent-soft': '#eedbdd',
-      '--workspace-accent-border': '#cfa0a4',
-      '--workspace-accent-contrast': '#fff7f6',
-      '--status-active': '#5f7566',
-      '--status-cooling': '#97714e',
-      '--status-abandoned': '#9f5f5e',
-      '--card-bg': '#fffaf7',
-    },
-    dark: {
-      '--ink': '#eadfd9',
-      '--paper': '#1a1212',
-      '--warm-gray': '#2d2322',
-      '--muted': '#897571',
-      '--accent-amber': '#bd8964',
-      '--accent-chamomile': '#c8a47a',
-      '--accent-slate': '#858e94',
-      '--accent-rose': '#c78682',
-      '--workspace-accent': '#c0838a',
-      '--workspace-accent-soft': '#302323',
-      '--workspace-accent-border': '#684a4d',
-      '--workspace-accent-contrast': '#1a1212',
-      '--status-active': '#8fa084',
-      '--status-cooling': '#c7966f',
-      '--status-abandoned': '#d08d88',
-      '--card-bg': '#241a1a',
-    },
-  },
-};
-
 let themePreferences = {
   mode: 'system',
+  styleId: 'paper-desk',
   paletteId: 'paper',
   customBackground: '',
   surfaceOpacity: 14,
@@ -296,6 +139,7 @@ let themePreferences = {
   quickShortcutIconRadius: SHORTCUT_ICON_MASK_RADIUS,
   drawerSpeed: DRAWER_SPEED_DEFAULT,
   hitokotoEnabled: true,
+  quickShortcutReorderingEnabled: false,
 };
 
 let systemThemeMediaQuery = null;
@@ -304,23 +148,28 @@ let systemThemeListener = null;
 function normalizeThemePreferences(input) {
   const next = input && typeof input === 'object' ? input : {};
   const legacyThemeId = String(next.themeId || '');
-  const migrated = LEGACY_THEME_MIGRATION[legacyThemeId] || null;
+  const migrated = themeCatalogLegacyMigration[legacyThemeId] || null;
   const rawMode = String(next.mode || migrated?.mode || 'system');
-  const rawPaletteId = String(next.paletteId || migrated?.paletteId || 'paper');
+  const styleId = themeCatalogResolveKnownStyleId(next.styleId)
+    || themeCatalogResolveKnownStyleId(next.paletteId)
+    || themeCatalogResolveKnownStyleId(migrated?.styleId)
+    || 'paper-desk';
   const rawOpacity = Number(next.surfaceOpacity);
   const surfaceOpacity = Number.isFinite(rawOpacity)
-    ? Math.min(60, Math.max(2, Math.round(rawOpacity)))
+    ? Math.min(100, Math.max(0, Math.round(rawOpacity)))
     : 14;
   const shortcutIconStyle = getQuickShortcutIconStylePreferences(next);
   return {
-    mode: VALID_THEME_MODES.has(rawMode) ? rawMode : 'system',
-    paletteId: VALID_THEME_PALETTES.has(rawPaletteId) ? rawPaletteId : 'paper',
+    mode: themeCatalogModeOrder.includes(rawMode) ? rawMode : 'system',
+    styleId,
+    paletteId: themeCatalogGetLegacyPaletteId(styleId),
     customBackground: typeof next.customBackground === 'string' ? next.customBackground : '',
     surfaceOpacity,
     quickShortcutIconSize: shortcutIconStyle.iconSize,
     quickShortcutIconRadius: shortcutIconStyle.iconMaskRadius,
     drawerSpeed: normalizeDrawerSpeed(next.drawerSpeed),
     hitokotoEnabled: next.hitokotoEnabled !== false,
+    quickShortcutReorderingEnabled: next.quickShortcutReorderingEnabled === true,
   };
 }
 
@@ -334,6 +183,9 @@ function normalizeQuickShortcuts(input) {
         ? String(item.iconKind)
         : '';
       const iconMask = String(item.iconMask || '') === 'rounded' ? 'rounded' : 'none';
+      const iconPresentation = themeNormalizeAdaptiveIconPresentation
+        ? themeNormalizeAdaptiveIconPresentation(item.iconPresentation)
+        : 'auto';
       return {
         id: String(item.id || `shortcut-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
         url: String(item.url).trim(),
@@ -341,6 +193,7 @@ function normalizeQuickShortcuts(input) {
         icon: normalizedIcon.value,
         iconKind: normalizedIcon.kind || explicitIconKind,
         iconMask,
+        iconPresentation,
       };
     })
     .filter(item => item.url);
@@ -440,26 +293,30 @@ function getResolvedTone(preferences = themePreferences) {
   return normalized.mode;
 }
 
-function getThemeFamilyDefinition(paletteId) {
-  return THEME_FAMILIES[paletteId] || THEME_FAMILIES.paper;
+function getThemeFamilyDefinition(styleId) {
+  return themeCatalogGetStyle(styleId);
 }
 
 function getResolvedThemeDefinition(preferences = themePreferences) {
   const normalized = normalizeThemePreferences(preferences);
   const resolvedTone = getResolvedTone(normalized);
-  const family = getThemeFamilyDefinition(normalized.paletteId);
+  const family = getThemeFamilyDefinition(normalized.styleId);
   return {
-    id: normalized.paletteId,
+    id: normalized.styleId,
+    styleId: normalized.styleId,
+    paletteId: normalized.paletteId,
     name: family.name,
     meta: family.meta,
     tone: resolvedTone,
-    vars: family[resolvedTone],
+    vars: {
+      ...family.tokens,
+      ...family[resolvedTone],
+    },
   };
 }
 
-function getPalettePreviewStyle(paletteId) {
-  const family = getThemeFamilyDefinition(paletteId);
-  return `--theme-paper:${family.light['--paper']};--theme-accent:${family.light['--accent-amber']};`;
+function getPalettePreviewStyle(styleId) {
+  return themeCatalogGetPreviewStyle(styleId);
 }
 
 function syncSystemThemeSubscription() {
@@ -580,7 +437,8 @@ function applyThemePreferences() {
   if (body) {
     body.classList.toggle('theme-tone-light', theme.tone === 'light');
     body.classList.toggle('theme-tone-dark', theme.tone === 'dark');
-    body.dataset.themePalette = theme.id;
+    body.dataset.themeStyle = theme.styleId;
+    body.dataset.themePalette = theme.paletteId;
   }
 
   if (themePreferences.customBackground && String(themePreferences.customBackground).startsWith('data:image/')) {
@@ -599,7 +457,22 @@ function applyThemePreferences() {
   }
 }
 
+const themeMenuMarkupCache = new WeakMap();
+
+function updateThemeMenuMarkup(element, markup) {
+  if (themeMenuMarkupCache.get(element) === markup) return false;
+  element.innerHTML = markup;
+  themeMenuMarkupCache.set(element, markup);
+  return true;
+}
+
 function renderThemeMenu() {
+  const shortcutReorderingToggle = document.getElementById('themeShortcutReorderingToggle');
+  if (shortcutReorderingToggle) {
+    const reorderingEnabled = themePreferences.quickShortcutReorderingEnabled;
+    shortcutReorderingToggle.classList.toggle('is-active', reorderingEnabled);
+    shortcutReorderingToggle.setAttribute('aria-pressed', reorderingEnabled ? 'true' : 'false');
+  }
   const trigger = document.getElementById('themeMenuTrigger');
   const modeOptions = document.getElementById('themeModeOptions');
   const pinToggle = document.getElementById('headerPinToggle');
@@ -636,7 +509,7 @@ function renderThemeMenu() {
     pinToggle.setAttribute('aria-pressed', String(groupOrderState.pinEnabled));
   }
 
-  modeOptions.innerHTML = THEME_MODE_ORDER.map(id => `
+  const modeOptionsMarkup = themeCatalogModeOrder.map(id => `
     <button
       class="theme-mode-option ${themePreferences.mode === id ? 'is-active' : ''}"
       type="button"
@@ -645,22 +518,31 @@ function renderThemeMenu() {
       aria-pressed="${themePreferences.mode === id}"
     >${themeT ? themeT(THEME_MODE_LABEL_KEYS[id]) : id}</button>
   `).join('');
+  updateThemeMenuMarkup(modeOptions, modeOptionsMarkup);
 
-  options.innerHTML = THEME_PALETTE_ORDER.map(id => {
+  const themeOptionsMarkup = themeCatalogStyleOrder.map(id => {
     const family = getThemeFamilyDefinition(id);
+    const familyName = themeT && family.nameKey ? themeT(family.nameKey) : family.name;
+    const familyMeta = themeT && family.metaKey ? themeT(family.metaKey) : family.meta;
     return `
     <button
-      class="theme-option ${themePreferences.paletteId === id ? 'is-active' : ''}"
+      class="theme-option ${themePreferences.styleId === id ? 'is-active' : ''}"
       type="button"
       data-action="select-theme"
-      data-palette-id="${id}"
-      aria-pressed="${themePreferences.paletteId === id}"
+      data-style-id="${id}"
+      data-palette-id="${themeCatalogGetLegacyPaletteId(id)}"
+      aria-pressed="${themePreferences.styleId === id}"
       style="${getPalettePreviewStyle(id)}"
     >
       <span class="theme-option-main">
-        <span class="theme-option-swatch" aria-hidden="true"></span>
+        <span class="theme-option-swatch" aria-hidden="true">
+          <span class="theme-option-swatch-surface"></span>
+          <span class="theme-option-swatch-line"></span>
+          <span class="theme-option-swatch-accent"></span>
+        </span>
         <span>
-          <span class="theme-option-name">${themeEscapeHtml ? themeEscapeHtml(family.name) : family.name}</span>
+          <span class="theme-option-name">${themeEscapeHtml ? themeEscapeHtml(familyName) : familyName}</span>
+          <span class="theme-option-meta">${themeEscapeHtml ? themeEscapeHtml(familyMeta) : familyMeta}</span>
         </span>
       </span>
       <span class="theme-option-check" aria-hidden="true">
@@ -669,6 +551,7 @@ function renderThemeMenu() {
     </button>
   `;
   }).join('');
+  updateThemeMenuMarkup(options, themeOptionsMarkup);
 }
 
 async function getQuickShortcuts() {
@@ -835,7 +718,7 @@ function getOpenTabFavIconUrlForShortcut(shortcutUrl) {
 
 function getShortcutSiteIconData(shortcut, label = '', size = 32) {
   const favIconUrl = getOpenTabFavIconUrlForShortcut(shortcut?.url || '');
-  const { hostname, sources } = getShortcutIconSources({
+  const { hostname, sources, adaptiveIcon } = getShortcutIconSources({
     url: shortcut?.url || '',
     favIconUrl,
   }, size);
@@ -845,6 +728,7 @@ function getShortcutSiteIconData(shortcut, label = '', size = 32) {
     src: sources[0] || '',
     fallbackSrc: sources[1] || '',
     fallbackLabel: getShortcutFallbackLabel(label, hostname),
+    adaptiveIcon: adaptiveIcon || null,
   };
 }
 
@@ -858,25 +742,6 @@ function getShortcutIconTone(hostname = '') {
     hash = (hash + cleanHost.charCodeAt(index) * (index + 1)) % toneIds.length;
   }
   return toneIds[hash];
-}
-
-function getCodelifeFaviconUrl(input, size = 64) {
-  const normalizedUrl = normalizeShortcutUrl(input);
-  if (!normalizedUrl) return '';
-  try {
-    const url = new URL(normalizedUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) return '';
-    const params = new URLSearchParams({
-      client: 'SOCIAL',
-      type: 'FAVICON',
-      fallback_opts: 'TYPE,SIZE,URL',
-      url: normalizedUrl,
-      size: String(size),
-    });
-    return `https://ico.codelife.cc/faviconV2?${params.toString()}`;
-  } catch {
-    return '';
-  }
 }
 
 function createShortcutIconCandidates(input) {
@@ -947,6 +812,9 @@ function createShortcutEditorState(input = {}) {
     icon: String(input.icon || ''),
     iconKind: String(input.iconKind || 'site'),
     iconMask: input.iconMask === 'rounded' ? 'rounded' : 'none',
+    iconPresentation: themeNormalizeAdaptiveIconPresentation
+      ? themeNormalizeAdaptiveIconPresentation(input.iconPresentation)
+      : 'auto',
     iconSize: globalIconStyle.iconSize,
     iconMaskRadius: globalIconStyle.iconMaskRadius,
     presentation: input.presentation === 'tab-picker' ? 'tab-picker' : 'default',
@@ -981,6 +849,8 @@ function getShortcutEditorElements() {
     imageGroup: document.getElementById('shortcutEditorImageGroup'),
     svgGroup: document.getElementById('shortcutEditorSvgGroup'),
     styleGroup: document.getElementById('shortcutEditorStyleGroup'),
+    presentationGroup: document.getElementById('shortcutEditorPresentationGroup'),
+    presentationButtons: [...document.querySelectorAll('[data-action="set-shortcut-icon-presentation"]')],
     maskButtons: [...document.querySelectorAll('[data-action="set-shortcut-icon-mask"]')],
     iconSearchStatus: document.getElementById('shortcutEditorIconSearchStatus'),
     iconCandidates: document.getElementById('shortcutEditorIconCandidates'),
@@ -1066,6 +936,13 @@ function syncShortcutEditorStyleControls(elements = getShortcutEditorElements())
   if (elements.styleGroup) {
     elements.styleGroup.hidden = !showStyleControls;
   }
+  if (elements.presentationGroup) {
+    elements.presentationGroup.hidden = !showStyleControls;
+  }
+  elements.presentationButtons.forEach(button => {
+    const isSelected = button.dataset.iconPresentation === shortcutEditorState.iconPresentation;
+    button.setAttribute('aria-pressed', String(isSelected));
+  });
   elements.maskButtons.forEach(button => {
     const isSelected = button.dataset.mask === shortcutEditorState.iconMask;
     button.setAttribute('aria-pressed', String(isSelected));
@@ -1142,6 +1019,49 @@ function debounceShortcutPreviewRender(preview, previewFallback, label) {
     preview.style.setProperty('--preview-icon-radius', `${state.iconMaskRadius}px`);
     preview.classList.toggle('is-rounded-mask', state.iconMask === 'rounded');
     preview.dataset.iconTone = getShortcutIconTone(siteIconData.hostname);
+    const previewHasGlyph = state.iconKind === 'glyph' && Boolean(state.icon);
+    const previewHasPrimaryIcon = (state.iconKind === 'image' || state.iconKind === 'svg')
+      ? Boolean(state.icon)
+      : state.iconKind === 'site' && Boolean(siteIconData.src);
+    const previewViewModel = themeCreateAdaptiveIconViewModel
+      ? themeCreateAdaptiveIconViewModel({
+          iconPresentation: state.iconPresentation,
+          iconKind: state.iconKind,
+          iconMask: state.iconMask,
+          hasPrimaryIcon: previewHasPrimaryIcon,
+          hasGlyph: previewHasGlyph,
+          adaptiveIcon: siteIconData.adaptiveIcon,
+        })
+      : {
+          requestedPresentation: 'auto',
+          treatment: previewHasGlyph || !previewHasPrimaryIcon ? 'glyph' : 'original',
+          plateShape: previewHasGlyph || !previewHasPrimaryIcon ? 'circle' : 'rounded-square',
+          artworkFit: 'contain',
+          cardClass: previewHasGlyph || !previewHasPrimaryIcon
+            ? 'has-icon-treatment-glyph has-icon-plate-circle has-icon-fit-contain'
+            : 'has-icon-treatment-original has-icon-plate-rounded-square has-icon-fit-contain',
+          placement: { scale: 1, offsetX: 0, offsetY: 0 },
+        };
+    preview.classList.remove(
+      'has-icon-treatment-original',
+      'has-icon-treatment-glyph',
+      'has-icon-treatment-fill',
+      'has-icon-treatment-tile',
+      'has-icon-treatment-disc',
+      'has-icon-plate-circle',
+      'has-icon-plate-rounded-square',
+      'has-icon-plate-none',
+      'has-icon-fit-contain',
+      'has-icon-fit-cover'
+    );
+    preview.classList.add(...previewViewModel.cardClass.split(/\s+/).filter(Boolean));
+    preview.dataset.iconPresentation = previewViewModel.requestedPresentation;
+    preview.dataset.iconTreatment = previewViewModel.treatment;
+    preview.dataset.iconPlate = previewViewModel.plateShape;
+    preview.dataset.iconFit = previewViewModel.artworkFit;
+    preview.style.setProperty('--adaptive-icon-scale', String(previewViewModel.placement.scale));
+    preview.style.setProperty('--adaptive-icon-offset-x', `${previewViewModel.placement.offsetX * 100}%`);
+    preview.style.setProperty('--adaptive-icon-offset-y', `${previewViewModel.placement.offsetY * 100}%`);
 
     const appendFallback = () => {
       if (!previewFallback) return;
@@ -1416,6 +1336,16 @@ function setShortcutEditorIconMask(nextMask) {
   syncShortcutEditor();
 }
 
+function setShortcutEditorIconPresentation(nextPresentation) {
+  shortcutEditorState = createShortcutEditorState({
+    ...shortcutEditorState,
+    iconPresentation: themeNormalizeAdaptiveIconPresentation
+      ? themeNormalizeAdaptiveIconPresentation(nextPresentation)
+      : 'auto',
+  });
+  syncShortcutEditor();
+}
+
 function setShortcutEditorSource(source) {
   const nextSource = ['site', 'glyph', 'image', 'svg'].includes(source) ? source : 'site';
   if (nextSource !== 'image') {
@@ -1549,6 +1479,7 @@ async function saveShortcutEditorShortcut() {
       icon: shortcutEditorState.icon,
       iconKind: shortcutEditorState.iconKind,
       iconMask: shortcutEditorState.iconMask,
+      iconPresentation: shortcutEditorState.iconPresentation,
     };
 
     const nextShortcuts = shortcutEditorState.mode === 'edit'
@@ -1598,209 +1529,7 @@ function getShortcutLabel(shortcut) {
   }
 }
 
-function animateQuickShortcutNode(item, previousRect) {
-  if (!item || !previousRect) return;
-
-  const nextRect = item.getBoundingClientRect();
-  const deltaX = previousRect.left - nextRect.left;
-  const deltaY = previousRect.top - nextRect.top;
-  if (!deltaX && !deltaY) return;
-
-  const travel = Math.hypot(deltaX, deltaY);
-  const duration = prefersReducedMotion()
-    ? 0
-    : Math.min(380, Math.max(240, Math.round(228 + travel * 0.4)));
-
-  item.style.transition = 'none';
-  item.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0)`;
-  requestAnimationFrame(() => {
-    item.style.transition = duration
-      ? `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`
-      : 'none';
-    item.style.transform = '';
-  });
-}
-
-function animateQuickShortcutItems(listEl, previousRects, affectedIds = null) {
-  const affected = affectedIds instanceof Set ? affectedIds : null;
-  listEl?.querySelectorAll('[data-shortcut-id]:not(.is-drag-slot)').forEach(item => {
-    const key = item.dataset.shortcutId || '';
-    if (affected && !affected.has(key)) return;
-    animateQuickShortcutNode(item, previousRects.get(key));
-  });
-}
-
-function settleQuickShortcutItems(listEl, affectedIds = null) {
-  const affected = affectedIds instanceof Set ? affectedIds : null;
-  listEl?.querySelectorAll('[data-shortcut-id]:not(.is-drag-slot)').forEach(item => {
-    const key = item.dataset.shortcutId || '';
-    if (affected && !affected.has(key)) return;
-    item.style.transition = 'none';
-    item.style.transform = '';
-  });
-}
-
-function ensureQuickShortcutSlot() {
-  if (quickShortcutSlotEl || !quickShortcutDraggedEl) return quickShortcutSlotEl;
-
-  quickShortcutSlotEl = document.createElement('div');
-  quickShortcutSlotEl.className = 'quick-shortcut-slot is-drag-slot';
-  quickShortcutSlotEl.dataset.shortcutId = quickShortcutDraggedId;
-  quickShortcutSlotEl.style.width = `${quickShortcutDragState?.width || quickShortcutDraggedEl.getBoundingClientRect().width}px`;
-  quickShortcutSlotEl.style.height = `${quickShortcutDragState?.height || quickShortcutDraggedEl.getBoundingClientRect().height}px`;
-  quickShortcutDraggedEl.replaceWith(quickShortcutSlotEl);
-  return quickShortcutSlotEl;
-}
-
-function ensureQuickShortcutGhost() {
-  if (quickShortcutGhostEl || !quickShortcutDraggedEl) return quickShortcutGhostEl;
-
-  quickShortcutGhostEl = quickShortcutDraggedEl.cloneNode(true);
-  quickShortcutGhostEl.classList.remove('is-drag-origin');
-  quickShortcutGhostEl.classList.add('is-drag-ghost');
-  quickShortcutGhostEl.style.setProperty('--drag-width', `${quickShortcutDragState?.width || quickShortcutDraggedEl.getBoundingClientRect().width}px`);
-  quickShortcutGhostEl.style.setProperty('--drag-height', `${quickShortcutDragState?.height || quickShortcutDraggedEl.getBoundingClientRect().height}px`);
-  document.body.appendChild(quickShortcutGhostEl);
-  return quickShortcutGhostEl;
-}
-
-function clearQuickShortcutDragState() {
-  quickShortcutDragState = null;
-  quickShortcutDraggedId = '';
-  document.body.classList.remove('quick-shortcut-list-dragging');
-
-  quickShortcutDraggedEl = null;
-  quickShortcutGhostEl?.remove();
-  quickShortcutGhostEl = null;
-  quickShortcutSlotEl?.remove();
-  quickShortcutSlotEl = null;
-}
-
-function clampQuickShortcutDragPoint(clientX, clientY) {
-  const listEl = quickShortcutDragState?.listEl;
-  if (!listEl || !quickShortcutDragState) {
-    return { clientX, clientY };
-  }
-
-  const listRect = listEl.getBoundingClientRect();
-  const width = Number(quickShortcutDragState.width) || 0;
-  const height = Number(quickShortcutDragState.height) || 0;
-  const minClientX = listRect.left + quickShortcutDragState.offsetX - width / 2;
-  const maxClientX = listRect.right + quickShortcutDragState.offsetX - width / 2;
-  const minClientY = listRect.top + quickShortcutDragState.offsetY - height / 2;
-  const maxClientY = listRect.bottom + quickShortcutDragState.offsetY - height / 2;
-
-  return {
-    clientX: Math.min(Math.max(clientX, minClientX), maxClientX),
-    clientY: Math.min(Math.max(clientY, minClientY), maxClientY),
-  };
-}
-
-function updateDraggedQuickShortcutPosition(clientX, clientY) {
-  if (!quickShortcutGhostEl || !quickShortcutDragState) return;
-
-  quickShortcutGhostEl.style.setProperty('--drag-left', `${clientX - quickShortcutDragState.offsetX}px`);
-  quickShortcutGhostEl.style.setProperty('--drag-top', `${clientY - quickShortcutDragState.offsetY}px`);
-}
-
-function buildQuickShortcutSlotTargets(listEl) {
-  if (!(listEl instanceof HTMLElement)) return [];
-
-  return [...listEl.querySelectorAll('[data-shortcut-id]')].map(item => {
-    const rect = item.getBoundingClientRect();
-    return {
-      left: rect.left,
-      top: rect.top,
-      centerX: rect.left + rect.width / 2,
-      centerY: rect.top + rect.height / 2,
-    };
-  });
-}
-
-function findQuickShortcutSlotIndex(slotTargets, draggedCenterX, draggedCenterY) {
-  if (!Array.isArray(slotTargets) || !slotTargets.length) return -1;
-
-  let targetIndex = 0;
-  let closestDistance = Number.POSITIVE_INFINITY;
-  slotTargets.forEach((slot, index) => {
-    const dx = draggedCenterX - slot.centerX;
-    const dy = draggedCenterY - slot.centerY;
-    const distance = (dx * dx) + (dy * dy);
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      targetIndex = index;
-    }
-  });
-
-  return targetIndex;
-}
-
-function previewQuickShortcutOrder(clientX, clientY) {
-  const listEl = quickShortcutDragState?.listEl;
-  if (!listEl || !quickShortcutDraggedId || !quickShortcutSlotEl) return;
-
-  const clampedPoint = clampQuickShortcutDragPoint(clientX, clientY);
-  const draggedCenterX = clampedPoint.clientX - quickShortcutDragState.offsetX + quickShortcutDragState.width / 2;
-  const draggedCenterY = clampedPoint.clientY - quickShortcutDragState.offsetY + quickShortcutDragState.height / 2;
-
-  const items = [...listEl.querySelectorAll('[data-shortcut-id]:not(.is-drag-slot)')];
-  if (!items.length) return;
-
-  const targetIndex = findQuickShortcutSlotIndex(
-    quickShortcutDragState.slotTargets,
-    draggedCenterX,
-    draggedCenterY
-  );
-  if (targetIndex === -1) return;
-
-  const insertBeforeItem = items[targetIndex] || null;
-  const addCard = listEl.querySelector('.quick-shortcut-card.is-add');
-  const targetBeforeNode = insertBeforeItem || addCard || null;
-  const currentBeforeNode = quickShortcutSlotEl.nextElementSibling || null;
-  if (targetBeforeNode === currentBeforeNode) return;
-
-  const previousOrderIds = [...listEl.querySelectorAll('[data-shortcut-id]')]
-    .map(item => item.dataset.shortcutId || '')
-    .filter(Boolean);
-  const previousSlotIndex = previousOrderIds.indexOf(quickShortcutDraggedId);
-  const previousRects = new Map();
-  listEl.querySelectorAll('[data-shortcut-id]:not(.is-drag-slot)').forEach(item => {
-    previousRects.set(item.dataset.shortcutId || '', item.getBoundingClientRect());
-  });
-  const previousSlotRect = quickShortcutSlotEl.getBoundingClientRect();
-
-  if (insertBeforeItem) {
-    listEl.insertBefore(quickShortcutSlotEl, insertBeforeItem);
-  } else {
-    if (addCard) {
-      listEl.insertBefore(quickShortcutSlotEl, addCard);
-    } else {
-      listEl.appendChild(quickShortcutSlotEl);
-    }
-  }
-
-  const nextOrderIds = [...listEl.querySelectorAll('[data-shortcut-id]')]
-    .map(item => item.dataset.shortcutId || '')
-    .filter(Boolean);
-  const nextSlotIndex = nextOrderIds.indexOf(quickShortcutDraggedId);
-  const affectedIds = new Set(
-    nextOrderIds.filter(id => previousOrderIds.indexOf(id) !== nextOrderIds.indexOf(id))
-  );
-
-  const rangeStart = Math.min(previousSlotIndex, nextSlotIndex);
-  const rangeEnd = Math.max(previousSlotIndex, nextSlotIndex);
-  nextOrderIds.forEach((id, index) => {
-    if (index >= rangeStart && index <= rangeEnd) {
-      affectedIds.add(id);
-    }
-  });
-
-  settleQuickShortcutItems(listEl, affectedIds);
-  animateQuickShortcutItems(listEl, previousRects, affectedIds);
-  animateQuickShortcutNode(quickShortcutSlotEl, previousSlotRect);
-}
-
-function renderQuickShortcutCard(shortcut) {
+function renderQuickShortcutCard(shortcut, { openActionsId = '' } = {}) {
   const label = getShortcutLabel(shortcut);
   const safeLabel = themeEscapeHtml ? themeEscapeHtml(label) : label;
   const safeAriaLabel = themeEscapeHtmlAttribute ? themeEscapeHtmlAttribute(label) : label.replace(/"/g, '&quot;');
@@ -1827,6 +1556,8 @@ function renderQuickShortcutCard(shortcut) {
         ? ''
         : faviconUrl;
   const glyphIcon = customIcon.kind === 'glyph' ? customIcon.value : '';
+  const safePrimaryIconUrl = themeEscapeHtmlAttribute ? themeEscapeHtmlAttribute(primaryIconUrl) : primaryIconUrl.replace(/"/g, '&quot;');
+  const safeGlyphIcon = themeEscapeHtml ? themeEscapeHtml(glyphIcon) : glyphIcon;
   const iconSource = customIcon.kind === 'image'
     ? 'custom-image'
     : customIcon.kind === 'svg'
@@ -1836,47 +1567,54 @@ function renderQuickShortcutCard(shortcut) {
         : primaryIconUrl
           ? 'site'
           : 'fallback';
-  const stretchClass = customIcon.kind === 'image' || customIcon.kind === 'svg'
-    ? ' quick-shortcut-icon-auto-stretch'
-    : '';
+  const adaptiveViewModel = themeCreateAdaptiveIconViewModel
+    ? themeCreateAdaptiveIconViewModel({
+        iconPresentation: shortcut.iconPresentation,
+        iconKind: storedIconKind || customIcon.kind || 'site',
+        iconMask,
+        hasPrimaryIcon: Boolean(primaryIconUrl),
+        hasGlyph: Boolean(glyphIcon),
+        adaptiveIcon: iconData.adaptiveIcon,
+      })
+      : {
+        requestedPresentation: 'auto',
+        treatment: iconSource === 'glyph' || iconSource === 'fallback' ? 'glyph' : 'original',
+        plateShape: iconSource === 'glyph' || iconSource === 'fallback' ? 'circle' : 'rounded-square',
+        artworkFit: 'contain',
+        cardClass: iconSource === 'glyph' || iconSource === 'fallback'
+          ? 'has-icon-treatment-glyph has-icon-plate-circle has-icon-fit-contain'
+          : 'has-icon-treatment-original has-icon-plate-rounded-square has-icon-fit-contain',
+        placement: { scale: 1, offsetX: 0, offsetY: 0 },
+      };
+  const adaptiveStyle = `--adaptive-icon-scale:${adaptiveViewModel.placement.scale};--adaptive-icon-offset-x:${adaptiveViewModel.placement.offsetX * 100}%;--adaptive-icon-offset-y:${adaptiveViewModel.placement.offsetY * 100}%;`;
+
+  const actionsOpen = openActionsId === shortcut.id;
+  const allowReordering = themePreferences.quickShortcutReorderingEnabled;
+  const actionsId = `quick-shortcut-actions-${safeId}`;
 
   return `
-    <div class="quick-shortcut-card${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}" data-shortcut-id="${safeId}" data-icon-source="${iconSource}" data-icon-tone="${iconTone}" style="${iconStyle}">
-      <button class="quick-shortcut-open" type="button" data-action="open-quick-shortcut" data-shortcut-url="${safeUrl}" aria-label="${safeAriaLabel}" draggable="false">
+    <div class="quick-shortcut-card ${adaptiveViewModel.cardClass}${iconMask === 'rounded' ? ' has-rounded-icon-mask' : ''}${actionsOpen ? ' is-actions-open' : ''}" data-shortcut-id="${safeId}" data-icon-presentation="${adaptiveViewModel.requestedPresentation}" data-icon-treatment="${adaptiveViewModel.treatment}" data-icon-plate="${adaptiveViewModel.plateShape}" data-icon-fit="${adaptiveViewModel.artworkFit}" data-icon-source="${iconSource}" data-icon-tone="${iconTone}" style="${iconStyle}${adaptiveStyle}">
+      <button class="quick-shortcut-open" type="button" data-action="open-quick-shortcut" data-shortcut-url="${safeUrl}" aria-label="${safeAriaLabel}" aria-expanded="${actionsOpen}" aria-controls="${actionsId}" draggable="false">
         <span class="quick-shortcut-icon-wrap">
-          ${primaryIconUrl ? `<img class="quick-shortcut-icon${customIcon.kind === 'image' ? ' quick-shortcut-icon-custom' : ''}${stretchClass}" src="${primaryIconUrl}" alt="" draggable="false" data-fallback-src="${safeIconErrorFallback}" data-auto-stretch-icon="true">` : ''}
-          ${glyphIcon ? `<span class="quick-shortcut-custom-glyph" aria-hidden="true">${glyphIcon}</span>` : ''}
+          ${primaryIconUrl ? `<img class="quick-shortcut-icon${customIcon.kind === 'image' ? ' quick-shortcut-icon-custom' : ''}" src="${safePrimaryIconUrl}" alt="" draggable="false" data-fallback-src="${safeIconErrorFallback}">` : ''}
+          ${glyphIcon ? `<span class="quick-shortcut-custom-glyph" aria-hidden="true">${safeGlyphIcon}</span>` : ''}
           <span class="quick-shortcut-fallback"${primaryIconUrl || glyphIcon ? ' style="display:none"' : ''}>${fallbackLabel}</span>
         </span>
         <span class="quick-shortcut-label">${safeLabel}</span>
       </button>
-      <button class="quick-shortcut-edit" type="button" data-action="edit-quick-shortcut" data-shortcut-id="${safeId}" aria-label="${themeT ? themeT('editQuickTab') : 'Edit quick tab'}">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a2.25 2.25 0 1 1 3.182 3.182L10.582 17.13a4.5 4.5 0 0 1-1.897 1.13L6 19l.74-2.685a4.5 4.5 0 0 1 1.13-1.897L16.862 4.487ZM19.5 7.125 16.875 4.5" /></svg>
-      </button>
-      <button class="quick-shortcut-remove" type="button" data-action="remove-quick-shortcut" data-shortcut-id="${safeId}" aria-label="${themeT ? themeT('removeQuickTab') : 'Remove quick tab'}">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-      </button>
+      <div class="quick-shortcut-actions${allowReordering ? '' : ' is-two-action'}" id="${actionsId}" role="group" aria-label="${safeAriaLabel}" aria-hidden="${!actionsOpen}"${actionsOpen ? '' : ' hidden inert'}>
+        ${allowReordering ? `<button class="quick-shortcut-drag-handle" type="button" data-shortcut-command="reorder" aria-label="${themeT ? themeT('reorderQuickTab') : 'Reorder quick tab'}" tabindex="${actionsOpen ? '0' : '-1'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="1.35" /><circle cx="15" cy="7" r="1.35" /><circle cx="9" cy="12" r="1.35" /><circle cx="15" cy="12" r="1.35" /><circle cx="9" cy="17" r="1.35" /><circle cx="15" cy="17" r="1.35" /></svg>
+        </button>` : ''}
+        <button class="quick-shortcut-edit" type="button" data-shortcut-command="edit" aria-label="${themeT ? themeT('editQuickTab') : 'Edit quick tab'}" tabindex="${actionsOpen ? '0' : '-1'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a2.25 2.25 0 1 1 3.182 3.182L10.582 17.13a4.5 4.5 0 0 1-1.897 1.13L6 19l.74-2.685a4.5 4.5 0 0 1 1.13-1.897L16.862 4.487ZM19.5 7.125 16.875 4.5" /></svg>
+        </button>
+        <button class="quick-shortcut-remove" type="button" data-shortcut-command="remove" aria-label="${themeT ? themeT('removeQuickTab') : 'Remove quick tab'}" tabindex="${actionsOpen ? '0' : '-1'}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
     </div>
   `;
-}
-
-function syncQuickShortcutAutoStretchImage(imgEl) {
-  if (!(imgEl instanceof HTMLImageElement)) return;
-  if (imgEl.dataset.autoStretchIcon !== 'true') return;
-  const card = imgEl.closest('.quick-shortcut-card');
-  if (!card?.classList.contains('has-rounded-icon-mask')) return;
-
-  const naturalMin = Math.min(imgEl.naturalWidth || 0, imgEl.naturalHeight || 0);
-  if (!naturalMin) return;
-  imgEl.classList.toggle('is-auto-stretched', naturalMin <= 48);
-}
-
-function syncQuickShortcutAutoStretchImages(root = document) {
-  root.querySelectorAll?.('.quick-shortcut-icon[data-auto-stretch-icon="true"]').forEach(img => {
-    if (img.complete) {
-      syncQuickShortcutAutoStretchImage(img);
-    }
-  });
 }
 
 function renderQuickShortcutAddCard() {
@@ -1893,6 +1631,23 @@ function renderQuickShortcutAddCard() {
     </div>
   `;
 }
+
+async function handleQuickShortcutReorderingPreferenceClick(event) {
+  const toggle = event.target?.closest?.('#themeShortcutReorderingToggle');
+  if (!toggle) return;
+
+  const quickShortcutReorderingEnabled =
+    !themePreferences.quickShortcutReorderingEnabled;
+
+  // Keep the pressed state responsive while the preference is persisted.
+  toggle.classList.toggle('is-active', quickShortcutReorderingEnabled);
+  toggle.setAttribute('aria-pressed', String(quickShortcutReorderingEnabled));
+
+  await saveThemePreferences({ quickShortcutReorderingEnabled });
+  await renderQuickShortcuts();
+}
+
+document.addEventListener('click', handleQuickShortcutReorderingPreferenceClick);
 
 function warmupQuickShortcutFavicons(shortcuts = []) {
   const faviconCache = globalThis.TabHarborFaviconCache;
@@ -1912,12 +1667,40 @@ function warmupQuickShortcutFavicons(shortcuts = []) {
 async function renderQuickShortcuts() {
   ensureThemeFaviconRefreshListener();
   const list = document.getElementById('quickTabsList');
-  if (!list) return;
+  if (!list) return [];
 
-  const shortcuts = await getQuickShortcuts();
-  warmupQuickShortcutFavicons(shortcuts);
-  list.innerHTML = `${shortcuts.map(renderQuickShortcutCard).join('')}${renderQuickShortcutAddCard()}`;
-  syncQuickShortcutAutoStretchImages(list);
+  if (!quickShortcutsController) {
+    const controllerApi = globalThis.TabHarborQuickShortcutsController;
+    if (!controllerApi?.createController) {
+      throw new Error('TabHarborQuickShortcutsController must load before theme-controls.js');
+    }
+
+    quickShortcutsController = controllerApi.createController({
+      root: list,
+      loadItems: async () => {
+        const shortcuts = await getQuickShortcuts();
+        warmupQuickShortcutFavicons(shortcuts);
+        return shortcuts;
+      },
+      renderItems: (shortcuts, renderState) => (
+        `${shortcuts.map(shortcut => renderQuickShortcutCard(shortcut, renderState)).join('')}${renderQuickShortcutAddCard()}`
+      ),
+      prefersReducedMotion,
+      onAdd: ({ trigger }) => openTabPicker(trigger),
+      onEdit: ({ id, trigger }) => openShortcutEditorById(id, trigger),
+      onRemove: async ({ id }) => {
+        await removeQuickShortcutById(id);
+        showToast(themeT ? themeT('toastQuickTabRemoved') : 'Shortcut removed');
+      },
+      onReorder: ({ ids }) => saveQuickShortcutOrder(ids),
+      onOpenCurrent: ({ url }) => globalThis.TabHarborDashboardRuntime?.openOrFocusUrl?.(url),
+      onOpenBackground: ({ url }) => globalThis.TabHarborDashboardRuntime?.openUrlInBackgroundTab?.(url),
+      onError: error => showToast(error?.message || 'Could not update shortcut'),
+    });
+    quickShortcutsController.mount();
+  }
+
+  return quickShortcutsController.refresh('facade');
 }
 
 async function openShortcutEditorById(shortcutId, triggerEl = null) {
@@ -2240,6 +2023,7 @@ async function addSingleTabToQuickShortcuts(tab) {
     label,
     icon: '',
     iconKind: 'site',
+    iconPresentation: 'auto',
   };
 
   const updated = [...shortcuts, nextShortcut];
@@ -2279,6 +2063,7 @@ async function addSelectedTabsToQuickShortcuts() {
       label,
       icon: '',
       iconKind: 'site',
+      iconPresentation: 'auto',
     });
     existingUrls.add(shortcutUrl);
   }
@@ -2316,13 +2101,6 @@ document.addEventListener('click', async (e) => {
   if (!actionEl) return;
 
   const action = actionEl.dataset.action;
-
-  if (action === 'add-quick-shortcut') {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    openTabPicker(actionEl);
-    return;
-  }
 
   if (action === 'switch-tab-picker-view') {
     e.preventDefault();
@@ -2386,33 +2164,6 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
-  if (action === 'edit-quick-shortcut') {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    const shortcutId = actionEl.dataset.shortcutId || '';
-    await openShortcutEditorById(shortcutId, actionEl);
-    return;
-  }
-
-  if (action === 'remove-quick-shortcut') {
-    e.stopImmediatePropagation();
-    const shortcutId = actionEl.dataset.shortcutId;
-    if (!shortcutId) return;
-    await removeQuickShortcutById(shortcutId);
-    await renderQuickShortcuts();
-    showToast(themeT ? themeT('toastQuickTabRemoved') : 'Quick tab removed');
-    return;
-  }
-
-  if (action === 'open-quick-shortcut') {
-    e.stopImmediatePropagation();
-    if (Date.now() < quickShortcutSuppressClickUntil) return;
-    const url = actionEl.dataset.shortcutUrl;
-    if (!url) return;
-    await openOrFocusUrl(url);
-    return;
-  }
-
   if (action === 'close-shortcut-editor') {
     e.preventDefault();
     closeShortcutEditor({ restoreFocus: true });
@@ -2455,6 +2206,12 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'set-shortcut-icon-presentation') {
+    e.preventDefault();
+    setShortcutEditorIconPresentation(actionEl.dataset.iconPresentation || 'auto');
+    return;
+  }
+
   if (action === 'paste-shortcut-icon') {
     e.preventDefault();
     const pasted = await tryShortcutEditorPasteViaExecCommand();
@@ -2469,109 +2226,6 @@ document.addEventListener('click', async (e) => {
     setShortcutEditorIcon('');
     return;
   }
-});
-
-document.addEventListener('load', (e) => {
-  syncQuickShortcutAutoStretchImage(e.target);
-}, true);
-
-async function handleQuickShortcutMiddleOpen(shortcutButton, e) {
-  if (!shortcutButton) return false;
-  if (shortcutButton.dataset.action !== 'open-quick-shortcut') return;
-
-  e?.preventDefault?.();
-  e?.stopImmediatePropagation?.();
-  const now = Date.now();
-  if (now < quickShortcutSuppressClickUntil || now < quickShortcutMiddleClickSuppressUntil) return false;
-
-  const url = shortcutButton.dataset.shortcutUrl;
-  if (!url) return false;
-
-  const runtime = globalThis.TabHarborDashboardRuntime;
-  if (typeof runtime?.openUrlInBackgroundTab !== 'function') {
-    return false;
-  }
-
-  quickShortcutMiddleClickSuppressUntil = now + 600;
-  await runtime.openUrlInBackgroundTab(url);
-  return true;
-}
-
-document.addEventListener('auxclick', async (e) => {
-  const shortcutButton = e.target.closest('.quick-shortcut-open');
-  if (!shortcutButton || e.button !== 1) return;
-  await handleQuickShortcutMiddleOpen(shortcutButton, e);
-});
-
-document.addEventListener('pointerdown', (e) => {
-  const shortcutButton = e.target.closest('.quick-shortcut-open');
-  if (!shortcutButton) return;
-  if (shortcutButton.dataset.action !== 'open-quick-shortcut') return;
-
-  if (e.button === 1) {
-    void handleQuickShortcutMiddleOpen(shortcutButton, e);
-    return;
-  }
-
-  if (e.button !== 0) return;
-
-  const item = shortcutButton.closest('[data-shortcut-id]');
-  const listEl = item?.parentElement;
-  if (!item || !listEl) return;
-
-  quickShortcutDraggedId = item.dataset.shortcutId || '';
-  quickShortcutDraggedEl = item;
-
-  const rect = item.getBoundingClientRect();
-  quickShortcutDragState = {
-    listEl,
-    x: e.clientX,
-    y: e.clientY,
-    offsetX: e.clientX - rect.left,
-    offsetY: e.clientY - rect.top,
-    slotTargets: buildQuickShortcutSlotTargets(listEl),
-    width: rect.width,
-    height: rect.height,
-    moved: false,
-  };
-});
-
-document.addEventListener('pointermove', (e) => {
-  if (!quickShortcutDraggedId || !quickShortcutDragState) return;
-
-  const distance = Math.hypot(e.clientX - quickShortcutDragState.x, e.clientY - quickShortcutDragState.y);
-  if (!quickShortcutDragState.moved && distance < 4) return;
-
-  if (!quickShortcutDragState.moved) {
-    quickShortcutDragState.moved = true;
-    document.body.classList.add('quick-shortcut-list-dragging');
-    ensureQuickShortcutSlot();
-    ensureQuickShortcutGhost();
-  }
-
-  updateDraggedQuickShortcutPosition(e.clientX, e.clientY);
-  previewQuickShortcutOrder(e.clientX, e.clientY);
-});
-
-document.addEventListener('pointerup', async () => {
-  if (!quickShortcutDraggedId || !quickShortcutDragState) return;
-
-  const moved = quickShortcutDragState.moved;
-  const nextOrderIds = moved
-    ? [...quickShortcutDragState.listEl.children]
-      .map(node => {
-        if (node === quickShortcutSlotEl) return quickShortcutDraggedId;
-        return node.dataset?.shortcutId || '';
-      })
-      .filter(Boolean)
-    : [];
-  clearQuickShortcutDragState();
-
-  if (!moved) return;
-
-  quickShortcutSuppressClickUntil = Date.now() + 250;
-  await saveQuickShortcutOrder(nextOrderIds);
-  await renderQuickShortcuts();
 });
 
 document.addEventListener('input', (e) => {
@@ -2774,6 +2428,8 @@ function syncPopupTheme(targetDoc) {
   if (body) {
     body.classList.toggle('theme-tone-light', theme.tone === 'light');
     body.classList.toggle('theme-tone-dark', theme.tone === 'dark');
+    body.dataset.themeStyle = theme.styleId;
+    body.dataset.themePalette = theme.paletteId;
   }
 }
 
@@ -2797,7 +2453,6 @@ globalThis.TabOutThemeControls = {
   extractShortcutIconCandidatesFromHtml,
   getShortcutIconTone,
   getShortcutSiteIconData,
-  getCodelifeFaviconUrl,
   getQuickShortcutIconStyleAttribute,
   getQuickShortcutIconStylePreferences,
   getShortcutIconSearchHostname,

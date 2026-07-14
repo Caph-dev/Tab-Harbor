@@ -209,6 +209,32 @@ function setImageFallbackAttributes(imgEl, fallbackUrl = '') {
 function revealImageFallback(imgEl) {
   if (!imgEl) return;
   imgEl.style.display = 'none';
+  if (imgEl.classList.contains('quick-shortcut-icon')) {
+    const card = imgEl.closest('.quick-shortcut-card');
+    if (card) {
+      card.dataset.iconSource = 'fallback';
+      card.dataset.iconTreatment = 'glyph';
+      card.dataset.iconPlate = 'circle';
+      card.dataset.iconFit = 'contain';
+      card.classList.remove(
+        'has-icon-treatment-original',
+        'has-icon-treatment-glyph',
+        'has-icon-treatment-fill',
+        'has-icon-treatment-tile',
+        'has-icon-treatment-disc',
+        'has-icon-plate-circle',
+        'has-icon-plate-rounded-square',
+        'has-icon-plate-none',
+        'has-icon-fit-contain',
+        'has-icon-fit-cover'
+      );
+      card.classList.add(
+        'has-icon-treatment-glyph',
+        'has-icon-plate-circle',
+        'has-icon-fit-contain'
+      );
+    }
+  }
   const sibling = imgEl.nextElementSibling;
   if (!sibling) return;
   if (

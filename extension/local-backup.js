@@ -6,6 +6,11 @@
   const BACKUP_HISTORY_LIMIT = 15;
   const LATEST_BACKUP_FILENAME = `${BACKUP_DIR}/tab-harbor-backup-latest.json`;
   const BACKUP_META_KEY = 'tabHarbor.localBackup.meta';
+  const RECONSTRUCTIBLE_LOCAL_KEY_PREFIXES = [
+    'tabHarbor.favicon.cache',
+    'tabHarbor.favicon.entry.',
+    'tabHarbor.favicon.index',
+  ];
 
   function pad2(value) {
     return String(value).padStart(2, '0');
@@ -110,7 +115,11 @@
     if (areaName !== 'local' && areaName !== 'sync') return false;
     const keys = Object.keys(changes || {});
     if (!keys.length) return false;
-    return keys.some(key => key !== BACKUP_META_KEY);
+    return keys.some(key => {
+      if (key === BACKUP_META_KEY) return false;
+      if (areaName !== 'local') return true;
+      return !RECONSTRUCTIBLE_LOCAL_KEY_PREFIXES.some(prefix => key.startsWith(prefix));
+    });
   }
 
   const api = {
