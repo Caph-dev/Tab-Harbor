@@ -27,7 +27,7 @@ Tab Harbor 是一个面向 Google Chrome 的新标签页扩展。它把正在进
 ### 界面演示
 
 <p align="center">
-  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-32-48.jpg" alt="Tab Harbor 中文界面演示">
+  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-33-30.jpg" alt="Tab Harbor 中文界面演示">
 </p>
 
 ### 导航
@@ -202,7 +202,7 @@ It is not a SaaS dashboard, a wallpaper gallery, or a productivity game built ar
 ### Interface preview
 
 <p align="center">
-  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-33-30.jpg" alt="Tab Harbor English interface preview">
+  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-32-48.jpg" alt="Tab Harbor English interface preview">
 </p>
 
 ### Contents
