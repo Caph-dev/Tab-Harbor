@@ -24,6 +24,12 @@ Tab Harbor 是一个面向 Google Chrome 的新标签页扩展。它把正在进
 
 它不是 SaaS 仪表盘，不是壁纸展示页，也不是用连续打卡制造焦虑的效率游戏。Tab Harbor 更像一张阅读桌：信息在手边，工具退居其后，界面帮助你恢复上下文，而不是争夺注意力。
 
+### 界面演示
+
+<p align="center">
+  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-32-48.jpg" alt="Tab Harbor 中文界面演示">
+</p>
+
 ### 导航
 
 - [功能一览](#功能一览)
@@ -192,6 +198,12 @@ node --test extension/*.test.js
 Tab Harbor is a new-tab extension for Google Chrome. It gathers active work, favorite destinations, saved reading, and lightweight todos into one quiet browser workspace. When you open a new tab, you see the context you want to return to—not advertisements, vanity metrics, or visual noise.
 
 It is not a SaaS dashboard, a wallpaper gallery, or a productivity game built around streaks. Tab Harbor is closer to a reading desk: information stays within reach, tools remain secondary, and the interface helps you resume your train of thought instead of competing for it.
+
+### Interface preview
+
+<p align="center">
+  <img src="assets/readme/屏幕截图/PixPin_2026-07-14_19-33-30.jpg" alt="Tab Harbor English interface preview">
+</p>
 
 ### Contents
 

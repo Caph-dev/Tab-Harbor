@@ -11,7 +11,7 @@
   --rose: #b46a70;
   --shadow: 0 24px 60px rgba(69, 48, 22, 0.12);
   --shadow-soft: 0 12px 24px rgba(69, 48, 22, 0.08);
-  font-family: "SF Pro Text", "DM Sans", "Segoe UI", sans-serif;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
 }
 
 * {
@@ -187,10 +187,10 @@ h2 {
   font-weight: 600;
 }
 
-.shortcut.github { color: #7c4a2d; }
-.shortcut.docs { color: #4d6a7f; }
-.shortcut.local { color: #456a52; }
-.shortcut.read { color: #8a5260; }
+.shortcut.knowledge { color: #7c4a2d; }
+.shortcut.library { color: #4d6a7f; }
+.shortcut.maps { color: #456a52; }
+.shortcut.science { color: #8a5260; }
 .shortcut.add { min-width: 54px; }
 
 .icon-rail {
