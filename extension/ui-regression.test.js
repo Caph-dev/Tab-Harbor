@@ -70,11 +70,26 @@ test('page chip hover keeps its complete border above adjacent content', () => {
   );
 });
 
-test('mission lists do not add a shadow mask behind their cards', () => {
+test('mission cards mirror the upstream wide shadow without a list mask', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
+  assert.doesNotMatch(
+    css,
+    /\.missions\s*\{[^}]*content-visibility:\s*auto;/
+  );
+  assert.doesNotMatch(
+    css,
+    /\.missions\s*\{[^}]*contain-intrinsic-size:/
+  );
   assert.match(css, /#openTabsMissions,\s*#openTabsMissions::before,\s*#openTabsMissions::after\s*\{[\s\S]*box-shadow:\s*none;/);
-  assert.match(css, /#openTabsMissions > \.mission-card,[\s\S]*#openTabsMissions > \.mission-card:focus-within\s*\{[\s\S]*box-shadow:\s*none;/);
+  assert.match(
+    css,
+    /#openTabsMissions > \.mission-card\s*\{[^}]*box-shadow:\s*0 14px 28px\s*color-mix\(in srgb, var\(--workspace-accent\) 6%, transparent\);[^}]*filter:\s*none;/
+  );
+  assert.match(
+    css,
+    /#openTabsMissions > \.mission-card:hover,\s*#openTabsMissions > \.mission-card:focus-within\s*\{[^}]*box-shadow:\s*0 16px 30px\s*color-mix\(in srgb, var\(--workspace-accent\) 12%, transparent\);[^}]*transform:\s*none;[^}]*filter:\s*none;/
+  );
 });
 
 test('drawer clips its rounded surface without a square shadow layer', () => {

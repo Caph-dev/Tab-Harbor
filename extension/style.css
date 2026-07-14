@@ -1769,8 +1769,6 @@ body.group-dragging .group-nav-button {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 32px;
-  content-visibility: auto;
-  contain-intrinsic-size: 720px;
 }
 
 .mission-card {
@@ -5776,10 +5774,15 @@ body.theme-tone-dark::before {
   content: none;
 }
 
-#openTabsMissions > .mission-card,
+#openTabsMissions > .mission-card {
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--workspace-accent) 6%, transparent);
+  filter: none;
+}
+
 #openTabsMissions > .mission-card:hover,
 #openTabsMissions > .mission-card:focus-within {
-  box-shadow: none;
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--workspace-accent) 12%, transparent);
+  transform: none;
   filter: none;
 }
 
