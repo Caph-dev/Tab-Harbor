@@ -1807,8 +1807,9 @@ body.group-dragging .group-nav-button {
 .mission-card.has-neutral-bar::before { background: var(--warm-gray); }
 
 .mission-card:hover {
+  border-color: color-mix(in srgb, var(--warm-gray) 54%, var(--workspace-accent-border) 46%);
   box-shadow: 0 16px 30px color-mix(in srgb, var(--workspace-accent) 12%, transparent);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .mission-card:has(.chip-move-trigger.is-open) {
@@ -4940,7 +4941,7 @@ select:focus-visible,
 
 .mission-card:hover,
 .mission-card:focus-within {
-  transform: translateY(-2px);
+  transform: none;
   border-color: color-mix(in srgb, var(--workspace-accent-border) 56%, var(--warm-gray) 44%);
   background: color-mix(in srgb, var(--card-bg) 18%, transparent);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--workspace-accent) 5%, transparent);
@@ -5014,10 +5015,11 @@ select:focus-visible,
 
 .page-chip.clickable:hover,
 .page-chip:focus-within {
-  border-color: color-mix(in srgb, var(--workspace-accent-border) 28%, transparent);
+  z-index: 1;
+  border-color: color-mix(in srgb, var(--workspace-accent-border) 42%, var(--warm-gray) 58%);
   background: color-mix(in srgb, var(--workspace-accent-soft) 20%, transparent);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--workspace-accent-border) 24%, transparent),
     0 5px 12px color-mix(in srgb, var(--workspace-accent) 4%, transparent);
 }
 
@@ -5538,7 +5540,7 @@ body.theme-tone-dark::before {
 .mission-card:hover,
 .mission-card:focus-within {
   box-shadow: var(--th-item-shadow-hover);
-  transform: translateY(var(--th-hover-lift));
+  transform: none;
 }
 
 .header-search-shell,
