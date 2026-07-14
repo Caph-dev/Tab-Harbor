@@ -41,6 +41,33 @@ test('mission card allows move menu to overflow outside the card', () => {
     css,
     /\.mission-card\s*\{[\s\S]*overflow:\s*visible;/
   );
+  assert.match(css, /\.mission-card:hover\s*\{[^}]*border-color:\s*color-mix\([^}]*workspace-accent-border[^}]*transform:\s*none;/);
+  assert.doesNotMatch(css, /\.mission-card:hover\s*\{[^}]*translateY\(/);
+  assert.match(
+    css,
+    /\.mission-card:hover,\s*\.mission-card:focus-within\s*\{[^}]*box-shadow:\s*var\(--th-item-shadow-hover\);[^}]*transform:\s*none;/
+  );
+  assert.doesNotMatch(
+    css,
+    /\.mission-card:hover,\s*\.mission-card:focus-within\s*\{[^}]*transform:\s*translateY\(/
+  );
+});
+
+test('page chip hover keeps its complete border above adjacent content', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(
+    css,
+    /\.page-chip\s*\{[^}]*position:\s*relative;[^}]*border:\s*1px solid transparent;/
+  );
+  assert.match(
+    css,
+    /\.page-chip\.clickable:hover,\s*\.page-chip:focus-within\s*\{[^}]*z-index:\s*1;[^}]*border-color:[^}]*box-shadow:\s*inset 0 0 0 1px/
+  );
+  assert.doesNotMatch(
+    css,
+    /\.page-chip\.clickable:hover[^}]*transform:\s*translateY\(/
+  );
 });
 
 test('mission lists do not add a shadow mask behind their cards', () => {
@@ -75,6 +102,7 @@ test('shared visual primitives and semantic roles are available to components', 
     '--th-space-1',
     '--th-space-12',
     '--th-control-height-compact',
+    '--th-control-height-inline',
     '--th-control-hit-target',
     '--th-border-width-hairline',
     '--th-font-size-body',
@@ -594,18 +622,36 @@ test('theme menu styles and custom background layer are defined', () => {
   assert.match(html, /<script src="theme-controls\.js"><\/script>/);
 });
 
-test('mission-level actions keep close group in a durable footer row', () => {
+test('mission header keeps close group right-aligned and badges baseline-aligned', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
-  assert.match(runtimeJs, /actionsHtml \+= closeAllButton;/);
-  assert.match(runtimeJs, /<div class="mission-pages">\$\{pageChips\}<\/div>\s*<div class="actions mission-actions">\$\{actionsHtml\}<\/div>/);
-  assert.doesNotMatch(runtimeJs, /<div class="mission-heading">[\s\S]{0,1200}\$\{closeAllButton\}/);
-  assert.doesNotMatch(css, /\.mission-top\s*\{[^}]*display:\s*flex;/);
+  assert.doesNotMatch(runtimeJs, /actionsHtml \+= closeAllButton;/);
+  assert.match(runtimeJs, /<div class="mission-heading">[\s\S]{0,1200}\$\{closeAllButton\}/);
+  assert.match(runtimeJs, /\$\{actionsHtml \? `<div class="actions mission-actions">\$\{actionsHtml\}<\/div>` : ''\}/);
+  assert.match(runtimeJs, /class="action-btn dedup-tabs"[^>]*data-action="dedup-keep-one"/);
+  assert.match(css, /\.mission-top\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;[^}]*align-items:\s*center;/);
+  assert.match(css, /\.mission-heading\s*\{[^}]*align-items:\s*baseline;[^}]*row-gap:\s*var\(--th-space-1\);/);
+  assert.match(css, /\.mission-name\s*\{[^}]*line-height:\s*var\(--th-line-height-snug\);/);
+  assert.match(css, /\.open-tabs-badge\s*\{[^}]*line-height:\s*var\(--th-line-height-snug\);/);
   assert.match(css, /\.actions\s*\{[^}]*flex-wrap:\s*wrap;/);
   assert.match(css, /\.mission-actions\s*\{[^}]*align-items:\s*center;[^}]*width:\s*100%;[^}]*border-top:/);
   assert.match(css, /\.mission-actions \.action-btn\s*\{[^}]*min-height:\s*var\(--th-control-height-compact\);[^}]*border-radius:\s*var\(--th-control-radius\);/);
-  assert.match(css, /\.mission-actions \.action-btn\.close-tabs\s*\{[^}]*margin-left:\s*auto;/);
-  assert.match(css, /body \.mission-actions \.action-btn\.close-tabs:hover\s*\{[^}]*var\(--status-abandoned\)/);
+  assert.match(css, /\.mission-actions \.action-btn\.dedup-tabs\s*\{[^}]*min-height:\s*var\(--th-control-height-inline\);[^}]*padding:\s*var\(--th-space-1\) var\(--th-space-5\);[^}]*border-radius:\s*var\(--th-control-radius\);[^}]*var\(--accent-amber\)/);
+  assert.match(css, /\.mission-actions \.action-btn\.dedup-tabs:hover\s*\{[^}]*var\(--accent-amber\)[^}]*transform:\s*none;/);
+  assert.match(css, /\.mission-top > \.action-btn\.close-tabs\s*\{[^}]*white-space:\s*nowrap;/);
+  assert.match(css, /\.action-btn\.close-tabs\s*\{[^}]*border-radius:\s*var\(--th-control-radius\);[^}]*min-height:\s*var\(--th-control-height-inline\);[^}]*padding:\s*var\(--th-space-1\) var\(--th-space-5\);/);
+  assert.match(css, /--th-control-height-inline:\s*calc\(var\(--th-size-7\) - var\(--th-space-1\)\);/);
+  assert.doesNotMatch(css, /\.action-btn\.close-tabs\s*\{[^}]*border-radius:\s*8px;/);
+  assert.match(css, /body \.mission-top > \.action-btn\.close-tabs:hover\s*\{[^}]*var\(--status-abandoned\)/);
+});
+
+test('header search copy follows the selected language', () => {
+  assert.match(html, /class="header-search-label"[^>]*data-i18n="searchWebLabel"/);
+  assert.match(html, /id="headerSearchInput"[^>]*data-i18n-placeholder="searchWebPlaceholder"/);
+  assert.match(i18nJs, /searchWebLabel: 'Search the web'/);
+  assert.match(i18nJs, /searchWebPlaceholder: 'Search with your default engine\.\.\.'/);
+  assert.match(i18nJs, /searchWebLabel: '搜索网络'/);
+  assert.match(i18nJs, /searchWebPlaceholder: '使用默认搜索引擎搜索\.\.\.'/);
 });
 
 test('quick tabs area renders shortcut cards and add button hooks', () => {
