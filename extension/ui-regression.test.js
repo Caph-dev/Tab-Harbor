@@ -955,8 +955,12 @@ test('interactive controls keep button semantics and reduced-motion support', ()
 });
 
 test('drawer detail escapes todo title and description before injecting HTML', () => {
-  assert.match(drawerJs, /<h3>\$\{drawerEscapeHtml \? drawerEscapeHtml\(todo\.title\) : String\(todo\.title\)\.replace\(/);
-  assert.match(drawerJs, /drawerEscapeHtml \? drawerEscapeHtml\(todo\.description \|\| 'Add a note when this task needs more context\.'\) : String\(todo\.description \|\| 'Add a note when this task needs more context\.'\)\.replace\(/);
+  assert.match(drawerJs, /escapedTitle = drawerEscapeHtml \? drawerEscapeHtml\(todo\.title\)/);
+  assert.match(drawerJs, /detailCopy = todo\.description \|\| drawerLabel\('todoDetailsEmpty'\)/);
+  assert.match(drawerJs, /escapedDescription = drawerEscapeHtml \? drawerEscapeHtml\(detailCopy\)/);
+  assert.match(drawerJs, /<h3>\$\{escapedTitle\}<\/h3>/);
+  assert.match(drawerJs, /if \(titleInput\) titleInput\.value = todo\.title/);
+  assert.match(drawerJs, /if \(descriptionInput\) descriptionInput\.value = todo\.description \|\| ''/);
   assert.ok(drawerJs.includes(`replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')`));
 });
 
@@ -1018,9 +1022,33 @@ test('keyboard focus receives explicit visible treatment', () => {
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
 
   assert.match(css, /--focus-ring:/);
-  assert.match(css, /:is\([\s\S]*\.quick-shortcut-open,[\s\S]*\.theme-option,[\s\S]*\.todo-main[\s\S]*\):focus-visible/);
+  assert.match(css, /:is\([\s\S]*\.archive-item-restore,[\s\S]*\.quick-shortcut-open,[\s\S]*\.theme-option,[\s\S]*\.todo-detail-edit,[\s\S]*\.todo-edit-cancel,[\s\S]*\.todo-edit-save,[\s\S]*\.todo-input,[\s\S]*\.todo-main[\s\S]*\):focus-visible/);
   assert.match(css, /outline:\s*2px solid var\(--focus-ring\);/);
   assert.match(css, /\.header-search-input:focus-visible\s*\{[\s\S]*outline:\s*none;[\s\S]*box-shadow:\s*none;/);
+});
+
+test('todo editor and archive restore stay wired without dropping delete', () => {
+  const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf8');
+
+  assert.match(runtimeJs, /action === 'edit-todo'/);
+  assert.match(runtimeJs, /action === 'cancel-todo-edit'/);
+  assert.match(runtimeJs, /action === 'restore-todo'/);
+  assert.match(runtimeJs, /e\.target\.id === 'todoEditForm'/);
+  assert.match(runtimeJs, /action === 'create-todo'[\s\S]*todoEditMode = false/);
+  assert.match(runtimeJs, /try \{\s*await editTodoItem\(/);
+  assert.match(runtimeJs, /await editTodoItem\([\s\S]{0,240}catch \{/);
+  assert.match(drawerJs, /data-action="edit-todo"/);
+  assert.match(drawerJs, /id="todoEditForm"/);
+  assert.match(drawerJs, /data-todo-id="\$\{escapedId\}"/);
+  assert.match(drawerJs, /class="archive-item-restore"[\s\S]*data-action="restore-todo"[\s\S]*class="archive-item-delete"[\s\S]*data-action="delete-todo-archive"/);
+  assert.match(drawerJs, /drawerLabel\('todoRestore'\)/);
+  assert.match(drawerJs, /drawerLabel\('todoRestoreAction'\)/);
+  assert.match(i18nJs, /todoRestoreAction:\s*'Restore'/);
+  assert.match(i18nJs, /todoRestoreAction:\s*'恢复'/);
+  assert.match(css, /\.todo-detail-heading\s*\{/);
+  assert.match(css, /\.todo-edit-form\s*\{/);
+  assert.match(css, /\.archive-item-actions\s*\{/);
+  assert.match(css, /\.archive-item-restore\s*\{/);
 });
 
 test('drawer tab hover and todo title typography stay aligned with theme system', () => {

@@ -338,3 +338,96 @@ test('newer local saved order survives refresh when sync reorder write fails', a
   assert.deepEqual(stores.local.deferred.map(item => item.id), ['b', 'a']);
   assert.deepEqual(stores.local['tabHarbor.saved.order'].ids, ['b', 'a']);
 });
+
+test('updateTodo persists trimmed title and description and advances updatedAt', async () => {
+  const { stores, api } = loadStore({
+    local: {
+      todos: [
+        {
+          id: 'todo-1',
+          title: 'Old title',
+          description: 'Old details',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          completed: false,
+          completedAt: null,
+          dismissed: false,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    },
+  });
+
+  await api.initDrawerSync();
+  const nextTodos = await api.updateTodo('todo-1', {
+    title: '  Revised title  ',
+    description: '  Revised details  ',
+  });
+
+  const localTodo = stores.local.todos[0];
+  const syncTodo = stores.sync['tabHarbor.todo.item.todo-1'];
+  assert.equal(nextTodos[0].title, 'Revised title');
+  assert.equal(nextTodos[0].description, 'Revised details');
+  assert.equal(localTodo.title, 'Revised title');
+  assert.equal(localTodo.description, 'Revised details');
+  assert.equal(syncTodo.title, 'Revised title');
+  assert.equal(syncTodo.description, 'Revised details');
+  assert.ok(Date.parse(localTodo.updatedAt) > Date.parse('2026-01-01T00:00:00.000Z'));
+  assert.equal(syncTodo.updatedAt, localTodo.updatedAt);
+});
+
+test('updateTodo can unarchive a completed todo without changing tombstones', async () => {
+  const { stores, api } = loadStore({
+    local: {
+      todos: [
+        {
+          id: 'todo-1',
+          title: 'Restore me',
+          description: 'Keep details',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          completed: true,
+          completedAt: '2026-01-02T00:00:00.000Z',
+          dismissed: false,
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+        {
+          id: 'todo-2',
+          title: 'Tombstone',
+          description: 'Gone',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          completed: true,
+          completedAt: '2026-01-02T00:00:00.000Z',
+          dismissed: true,
+          deletedAt: '2026-01-03T00:00:00.000Z',
+          updatedAt: '2026-01-03T00:00:00.000Z',
+        },
+      ],
+    },
+  });
+
+  await api.initDrawerSync();
+  const nextTodos = await api.updateTodo('todo-1', {
+    completed: false,
+    completedAt: null,
+  });
+
+  const restored = nextTodos.find(todo => todo.id === 'todo-1');
+  const tombstone = nextTodos.find(todo => todo.id === 'todo-2');
+  const syncRestored = stores.sync['tabHarbor.todo.item.todo-1'];
+  const syncTombstone = stores.sync['tabHarbor.todo.item.todo-2'];
+
+  assert.equal(restored.completed, false);
+  assert.equal(restored.completedAt, null);
+  assert.equal(restored.description, 'Keep details');
+  assert.equal(restored.dismissed, false);
+  assert.equal(restored.deletedAt, null);
+  assert.equal(stores.local.todos.find(todo => todo.id === 'todo-1').completed, false);
+  assert.equal(syncRestored.completed, false);
+  assert.equal(syncRestored.completedAt, null);
+  assert.equal(syncRestored.description, 'Keep details');
+  assert.equal(tombstone.dismissed, true);
+  assert.equal(tombstone.deletedAt, '2026-01-03T00:00:00.000Z');
+  assert.equal(tombstone.completed, true);
+  assert.equal(syncTombstone.dismissed, true);
+  assert.equal(syncTombstone.deletedAt, '2026-01-03T00:00:00.000Z');
+  assert.equal(syncTombstone.updatedAt, '2026-01-03T00:00:00.000Z');
+});

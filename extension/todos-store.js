@@ -46,6 +46,37 @@
     });
   }
 
+  function editTodo(todos, id, { title, description = '' } = {}) {
+    const cleanTitle = String(title || '').trim();
+    if (!cleanTitle) throw new Error('Todo title is required');
+
+    const targetId = String(id || '');
+    const updatedAt = new Date().toISOString();
+    return normalizeTodos(todos).map(todo => {
+      if (todo.id !== targetId || todo.completed || todo.dismissed || todo.deletedAt) return todo;
+      return {
+        ...todo,
+        title: cleanTitle,
+        description: String(description || '').trim(),
+        updatedAt,
+      };
+    });
+  }
+
+  function unarchiveTodo(todos, id) {
+    const targetId = String(id || '');
+    const updatedAt = new Date().toISOString();
+    return normalizeTodos(todos).map(todo => {
+      if (todo.id !== targetId || !todo.completed || todo.dismissed || todo.deletedAt) return todo;
+      return {
+        ...todo,
+        completed: false,
+        completedAt: null,
+        updatedAt,
+      };
+    });
+  }
+
   function completeTodo(todos, id) {
     return updateTodo(todos, id, {
       completed: true,
@@ -98,9 +129,11 @@
     clearArchivedTodos,
     createTodo,
     deleteTodo,
+    editTodo,
     normalizeTodos,
     searchTodos,
     splitTodos,
+    unarchiveTodo,
     updateTodo,
   };
 

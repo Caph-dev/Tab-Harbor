@@ -3517,10 +3517,16 @@ body.dashboard-refreshing footer {
   }
   .drawer-icon-btn,
   .archive-item-delete,
+  .archive-item-restore,
   .deferred-action-btn,
   .drawer-reorder-handle {
     width: 36px;
     height: 36px;
+  }
+
+  .archive-item-restore {
+    width: auto;
+    padding-inline: 8px;
   }
 }
 
@@ -3926,6 +3932,40 @@ body.page-chip-list-dragging .chip-reorder-handle {
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
+.archive-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.archive-item-restore {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--th-font-ui);
+  font-weight: 600;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.78;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.archive-item-restore:hover,
+.archive-item-restore:focus-visible {
+  opacity: 1;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--workspace-accent-soft) 42%, transparent);
+}
+
 .archive-item-delete:hover {
   opacity: 1;
   color: var(--status-abandoned);
@@ -4067,6 +4107,7 @@ body.page-chip-list-dragging .chip-reorder-handle {
   .action-btn,
   .archive-clear-btn,
   .archive-item-delete,
+  .archive-item-restore,
   .archive-search,
   .archive-toggle,
   .back-to-top,
@@ -4092,6 +4133,10 @@ body.page-chip-list-dragging .chip-reorder-handle {
   .theme-range,
   .todo-back-btn,
   .todo-checkbox,
+  .todo-detail-edit,
+  .todo-edit-cancel,
+  .todo-edit-save,
+  .todo-input,
   .todo-main
 ):focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -4103,6 +4148,7 @@ body.page-chip-list-dragging .chip-reorder-handle {
 .quick-shortcut-remove:focus-visible,
 .header-search-input:focus-visible,
 .archive-search:focus-visible,
+.todo-input:focus-visible,
 .theme-range:focus-visible {
   outline-offset: 3px;
 }
@@ -4119,9 +4165,39 @@ body.page-chip-list-dragging .chip-reorder-handle {
   padding: 16px;
 }
 
-.todo-detail-card h3 {
-  font-size: 15px;
+.todo-detail-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
   margin-bottom: 8px;
+}
+
+.todo-detail-card h3,
+.todo-detail-heading h3 {
+  font-size: 15px;
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-detail-edit {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--th-font-ui);
+  font-weight: 600;
+  line-height: 1;
+  min-height: 32px;
+  padding: 0 8px;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.todo-detail-edit:hover,
+.todo-detail-edit:focus-visible {
+  color: var(--ink);
 }
 
 .todo-detail-card p {
@@ -4129,6 +4205,93 @@ body.page-chip-list-dragging .chip-reorder-handle {
   color: var(--ink);
   line-height: 1.6;
   margin-bottom: 12px;
+}
+
+.todo-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-edit-form label {
+  font-size: 11px;
+  font-family: var(--th-font-ui);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.todo-input {
+  font-family: var(--th-font-ui);
+  font-size: 13px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--warm-gray);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card-bg) var(--panel-card-opacity), transparent);
+  color: var(--ink);
+  outline: none;
+}
+
+.todo-input:focus,
+.todo-input:focus-visible {
+  border-color: var(--accent-amber);
+}
+
+.todo-edit-description {
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.todo-edit-error {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--status-abandoned);
+}
+
+.todo-edit-error[hidden] {
+  display: none !important;
+}
+
+.todo-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.todo-edit-cancel,
+.todo-edit-save {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: var(--th-font-ui);
+  font-weight: 600;
+  line-height: 1;
+  min-height: 32px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.todo-edit-cancel {
+  color: var(--muted);
+}
+
+.todo-edit-cancel:hover,
+.todo-edit-cancel:focus-visible {
+  color: var(--ink);
+}
+
+.todo-edit-save {
+  color: var(--accent-amber);
+}
+
+.todo-edit-save:hover,
+.todo-edit-save:focus-visible {
+  color: var(--ink);
 }
 
 /* ---- Tab Picker Popover ---- */
@@ -4918,7 +5081,8 @@ select:focus-visible,
 .chip-action,
 .drawer-reorder-handle,
 .deferred-action-btn,
-.archive-item-delete {
+.archive-item-delete,
+.archive-item-restore {
   min-width: 34px;
   min-height: 34px;
 }

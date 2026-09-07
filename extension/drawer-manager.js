@@ -7,6 +7,7 @@ const {
 
 const {
   escapeHtml: drawerEscapeHtml,
+  escapeHtmlAttribute: drawerEscapeHtmlAttribute,
   getFallbackLabel: drawerGetFallbackLabel,
   getIconSources: drawerGetIconSources,
 } = globalThis.TabOutIconUtils || {};
@@ -21,9 +22,11 @@ const {
   completeTodo: drawerCompleteTodo,
   createTodo: drawerCreateTodo,
   deleteTodo: drawerDeleteTodo,
+  editTodo: drawerEditTodo,
   normalizeTodos: drawerNormalizeTodos,
   searchTodos: drawerSearchTodos,
   splitTodos: drawerSplitTodos,
+  unarchiveTodo: drawerUnarchiveTodo,
 } = globalThis.TabOutTodosStore || {};
 
 const {
@@ -43,6 +46,7 @@ let deferredTriggerDragState = null;
 let deferredTriggerSuppressClickUntil = 0;
 let drawerView = 'saved';
 let todoDetailId = '';
+let todoEditMode = false;
 let todoSearchOpen = false;
 let todoSearchQuery = '';
 let savedSearchOpen = false;
@@ -81,9 +85,21 @@ const DRAWER_LABEL_FALLBACKS = {
   closeSavedForLater: 'Close saved for later',
   openTodos: 'Open todos',
   closeTodos: 'Close todos',
+  todoRestore: 'Restore todo',
+  todoRestoreAction: 'Restore',
+  todoDeleteArchived: 'Delete archived todo',
 };
 
 const drawerLabel = key => (drawerT ? drawerT(key) : DRAWER_LABEL_FALLBACKS[key] || key);
+
+function escapeDrawerAttr(value) {
+  if (drawerEscapeHtmlAttribute) return drawerEscapeHtmlAttribute(value);
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 function drawerSavedItemsCount(count) {
   const key = count === 1 ? 'savedItemsCountSingular' : 'savedItemsCountPlural';
@@ -468,6 +484,40 @@ async function completeTodoItem(id) {
   return saveTodos(drawerCompleteTodo(todos, id));
 }
 
+async function editTodoItem(id, payload) {
+  const cleanTitle = String(payload?.title || '').trim();
+  if (!cleanTitle) throw new Error('Todo title is required');
+
+  const todos = await getTodos();
+  const target = todos.find(todo => todo.id === String(id));
+  if (!target || target.completed || target.dismissed || target.deletedAt) return todos;
+
+  const updates = {
+    title: cleanTitle,
+    description: String(payload?.description || '').trim(),
+  };
+  if (typeof drawerStoreUpdateTodo === 'function') {
+    if (typeof drawerInitSync === 'function') await drawerInitSync();
+    return setTodosCache(await drawerStoreUpdateTodo(id, updates));
+  }
+
+  return saveTodos(drawerEditTodo(todos, id, updates));
+}
+
+async function restoreTodoItem(id) {
+  const todos = await getTodos();
+  const target = todos.find(todo => todo.id === String(id));
+  if (!target || !target.completed || target.dismissed || target.deletedAt) return todos;
+
+  const updates = { completed: false, completedAt: null };
+  if (typeof drawerStoreUpdateTodo === 'function') {
+    if (typeof drawerInitSync === 'function') await drawerInitSync();
+    return setTodosCache(await drawerStoreUpdateTodo(id, updates));
+  }
+
+  return saveTodos(drawerUnarchiveTodo(todos, id));
+}
+
 async function deleteTodoItem(id) {
   if (typeof drawerStoreUpdateTodo === 'function') {
     if (typeof drawerInitSync === 'function') await drawerInitSync();
@@ -503,15 +553,23 @@ async function clearTodoArchiveItems() {
 
 function renderTodoArchiveItem(todo) {
   const ago = todo.completedAt ? timeAgo(todo.completedAt) : timeAgo(todo.createdAt);
+  const escapedId = escapeDrawerAttr(todo.id);
+  const restoreName = drawerLabel('todoRestore');
+  const deleteName = drawerLabel('todoDeleteArchived');
   return `
     <div class="archive-item">
       <div class="archive-item-main">
         <div class="archive-item-title">${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</div>
         <span class="archive-item-date">${ago}</span>
       </div>
-      <button class="archive-item-delete" type="button" data-action="delete-todo-archive" data-todo-id="${todo.id}" aria-label="Delete archived todo" title="Delete archived todo">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-      </button>
+      <div class="archive-item-actions">
+        <button class="archive-item-restore" type="button" data-action="restore-todo" data-todo-id="${escapedId}" aria-label="${escapeDrawerAttr(restoreName)}" title="${escapeDrawerAttr(restoreName)}">
+          ${drawerLabel('todoRestoreAction')}
+        </button>
+        <button class="archive-item-delete" type="button" data-action="delete-todo-archive" data-todo-id="${escapedId}" aria-label="${escapeDrawerAttr(deleteName)}" title="${escapeDrawerAttr(deleteName)}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
     </div>`;
 }
 
@@ -536,18 +594,56 @@ function renderTodoListItem(todo, { dragEnabled = true } = {}) {
 }
 
 function renderTodoDetail(todo) {
+  const escapedTitle = drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const detailCopy = todo.description || drawerLabel('todoDetailsEmpty');
+  const escapedDescription = drawerEscapeHtml ? drawerEscapeHtml(detailCopy) : String(detailCopy).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   return `
     <div class="todo-detail">
       <button class="todo-back-btn" type="button" data-action="close-todo-detail">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
-        Back to list
+        ${drawerLabel('todoBackToList')}
       </button>
       <div class="todo-detail-card">
-        <h3>${drawerEscapeHtml ? drawerEscapeHtml(todo.title) : String(todo.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</h3>
-        <p>${drawerEscapeHtml ? drawerEscapeHtml(todo.description || 'Add a note when this task needs more context.') : String(todo.description || 'Add a note when this task needs more context.').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</p>
-        <div class="todo-detail-meta">Created ${timeAgo(todo.createdAt)}</div>
+        <div class="todo-detail-heading">
+          <h3>${escapedTitle}</h3>
+          <button class="todo-detail-edit" type="button" data-action="edit-todo">${drawerLabel('todoEdit')}</button>
+        </div>
+        <p>${escapedDescription}</p>
+        <div class="todo-detail-meta">${drawerLabel('todoCreated')} ${timeAgo(todo.createdAt)}</div>
       </div>
     </div>`;
+}
+
+function renderTodoEditor(todo) {
+  const escapedId = escapeDrawerAttr(todo.id);
+  return `
+    <div class="todo-detail">
+      <button class="todo-back-btn" type="button" data-action="cancel-todo-edit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+        ${drawerLabel('todoBackToDetail')}
+      </button>
+      <form class="todo-edit-form" id="todoEditForm" data-todo-id="${escapedId}">
+        <label for="todoEditTitle">${drawerLabel('todoTitleLabel')}</label>
+        <input class="todo-input" id="todoEditTitle" name="title" type="text" required autocomplete="off">
+        <label for="todoEditDescription">${drawerLabel('todoDetailsLabel')}</label>
+        <textarea class="todo-input todo-edit-description" id="todoEditDescription" name="description" rows="5"></textarea>
+        <div class="todo-edit-error" id="todoEditError" role="alert" hidden>${drawerLabel('todoTitleRequired')}</div>
+        <div class="todo-edit-actions">
+          <button class="todo-edit-cancel" type="button" data-action="cancel-todo-edit">${drawerLabel('cancel')}</button>
+          <button class="todo-edit-save" type="submit">${drawerLabel('save')}</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+function populateTodoEditor(todo) {
+  const titleInput = document.getElementById('todoEditTitle');
+  const descriptionInput = document.getElementById('todoEditDescription');
+  const error = document.getElementById('todoEditError');
+  if (titleInput) titleInput.value = todo.title;
+  if (descriptionInput) descriptionInput.value = todo.description || '';
+  if (error) error.hidden = true;
+  titleInput?.focus();
 }
 
 async function renderTodoPanel() {
@@ -580,20 +676,23 @@ async function renderTodoPanel() {
   searchWrap.style.display = todoSearchOpen ? 'block' : 'none';
   searchWrap.hidden = !todoSearchOpen;
   if (searchInput && searchInput.value !== todoSearchQuery) searchInput.value = todoSearchQuery;
-  if (todoArchiveToggle && todoArchiveBody) {
-    const archiveExpanded = todoArchiveBody.style.display !== 'none' && !todoArchiveBody.hidden;
-    todoArchiveToggle.setAttribute('aria-expanded', String(archiveExpanded));
-  }
+  const archiveWasExpanded = Boolean(
+    todoArchiveToggle?.classList.contains('open')
+    || (todoArchiveBody && todoArchiveBody.style.display !== 'none' && !todoArchiveBody.hidden)
+  );
+  let editingTodo = null;
 
   if (todoDetailId) {
     const todo = active.find(item => item.id === todoDetailId);
     if (todo) {
-      detail.innerHTML = renderTodoDetail(todo);
+      editingTodo = todo;
+      detail.innerHTML = todoEditMode ? renderTodoEditor(todo) : renderTodoDetail(todo);
       detail.style.display = 'block';
       list.style.display = 'none';
       empty.style.display = 'none';
     } else {
       todoDetailId = '';
+      todoEditMode = false;
       detail.style.display = 'none';
     }
   } else {
@@ -620,6 +719,18 @@ async function renderTodoPanel() {
     archive.style.display = 'none';
     if (clearArchiveBtn) clearArchiveBtn.style.display = 'none';
   }
+
+  if (todoArchiveToggle && todoArchiveBody) {
+    const keepExpanded = archiveWasExpanded && archived.length > 0;
+    todoArchiveToggle.classList.toggle('open', keepExpanded);
+    todoArchiveToggle.setAttribute('aria-expanded', String(keepExpanded));
+    if (archived.length > 0) {
+      todoArchiveBody.hidden = !keepExpanded;
+      todoArchiveBody.style.display = keepExpanded ? 'block' : 'none';
+    }
+  }
+
+  if (todoEditMode && editingTodo) populateTodoEditor(editingTodo);
 }
 
 async function reopenSavedTab(url) {

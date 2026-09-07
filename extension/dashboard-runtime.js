@@ -2720,6 +2720,7 @@ document.addEventListener('click', async (e) => {
   if (action === 'switch-drawer-view') {
     drawerView = actionEl.dataset.view || 'saved';
     todoDetailId = '';
+    todoEditMode = false;
     await renderDeferredColumn();
     return;
   }
@@ -2745,18 +2746,42 @@ document.addEventListener('click', async (e) => {
     await createTodoItem({ title, description });
     drawerView = 'todos';
     todoDetailId = '';
+    todoEditMode = false;
     await renderDeferredColumn();
     return;
   }
 
   if (action === 'open-todo-detail') {
     todoDetailId = actionEl.dataset.todoId || '';
+    todoEditMode = false;
     await renderDeferredColumn();
     return;
   }
 
   if (action === 'close-todo-detail') {
     todoDetailId = '';
+    todoEditMode = false;
+    await renderDeferredColumn();
+    return;
+  }
+
+  if (action === 'edit-todo') {
+    if (!todoDetailId) return;
+    todoEditMode = true;
+    await renderDeferredColumn();
+    return;
+  }
+
+  if (action === 'cancel-todo-edit') {
+    todoEditMode = false;
+    await renderDeferredColumn();
+    return;
+  }
+
+  if (action === 'restore-todo') {
+    const id = actionEl.dataset.todoId;
+    if (!id) return;
+    await restoreTodoItem(id);
     await renderDeferredColumn();
     return;
   }
@@ -2765,7 +2790,10 @@ document.addEventListener('click', async (e) => {
     const id = actionEl.dataset.todoId;
     if (!id) return;
     await completeTodoItem(id);
-    if (todoDetailId === id) todoDetailId = '';
+    if (todoDetailId === id) {
+      todoDetailId = '';
+      todoEditMode = false;
+    }
     await renderDeferredColumn();
     return;
   }
@@ -3075,6 +3103,35 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('submit', async (e) => {
+  if (e.target.id === 'todoEditForm') {
+    e.preventDefault();
+    const titleInput = e.target.elements.title;
+    const descriptionInput = e.target.elements.description;
+    const title = String(titleInput?.value || '').trim();
+    const error = document.getElementById('todoEditError');
+    if (!title) {
+      if (error) error.hidden = false;
+      titleInput?.focus();
+      return;
+    }
+    if (error) error.hidden = true;
+
+    try {
+      await editTodoItem(e.target.dataset.todoId, {
+        title,
+        description: descriptionInput?.value || '',
+      });
+    } catch {
+      if (error) error.hidden = false;
+      titleInput?.focus();
+      return;
+    }
+
+    todoEditMode = false;
+    await renderDeferredColumn();
+    return;
+  }
+
   if (e.target.id !== 'headerSearchForm') return;
 
   e.preventDefault();
