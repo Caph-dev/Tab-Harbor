@@ -5,10 +5,9 @@ This file captures project-level design and implementation constraints for agent
 ## Project Shape
 
 1. Tab Harbor is a browser extension workspace under `extension/`.
-2. There is currently no root `package.json`; do not assume npm scripts exist.
-3. Tests are plain Node test files next to extension source files, commonly run with `node --test extension/*.test.js`.
-4. The runtime is intentionally dependency-light. Do not introduce a bundler, framework, package manager workflow, or build step unless the task explicitly requires it.
-5. The extension is loaded from static files. HTML, CSS, manifest, and ordered scripts are product-critical assets, not generated output.
+2. There is currently no root `package.json`. Until one exists, do not assume npm scripts are available; adding a package manager, bundler, framework, or build step is allowed when the work needs it.
+3. Tests are currently plain Node test files next to extension source files, commonly run with `node --test extension/*.test.js`.
+4. Chrome currently loads unpacked files from `extension/`. Until a build pipeline exists, HTML, CSS, manifest, and scripts in that directory are what the browser runs.
 
 ## Design Direction
 
@@ -36,8 +35,8 @@ This file captures project-level design and implementation constraints for agent
 
 ## Frontend Architecture
 
-1. This project is plain HTML, CSS, and ordered `<script>` tags with no bundler or ESM module system.
-2. Script load order is part of the runtime contract. Treat changes to `index.html` script order as high impact.
+1. The dashboard currently ships as HTML, CSS, and ordered classic `<script>` tags. That is the present runtime, not a ban on ESM, bundlers, or UI frameworks.
+2. While classic scripts remain in use, script load order is part of the runtime contract. Treat changes to `index.html` script order as high impact.
 3. Top-level bindings can collide across files. When destructuring from `globalThis`, use file-scoped prefixed aliases instead of shared short names.
 4. Keep `extension/app.js` as a thin orchestrator entry. Do not let it grow back into a catch-all runtime file.
 5. Prefer responsibility-based module boundaries such as:
@@ -71,10 +70,9 @@ This file captures project-level design and implementation constraints for agent
 
 1. Do not overwrite unrelated user changes. This repository may contain local or untracked agent-skill files.
 2. Keep edits narrow and product-facing changes consistent with the calm, composed identity.
-3. Prefer direct static-file edits over adding tooling.
-4. Do not add dependencies, package manifests, or generated assets unless explicitly requested.
-5. When changing browser-extension behavior, consider Chrome extension constraints and real browser runtime behavior, not just Node tests.
-6. Treat accessibility regressions as product regressions: focus visibility, hit targets, reduced motion, contrast, and non-hover access matter.
+3. Prefer the smallest change that fits the current runtime. Adding tooling, dependencies, package manifests, or generated assets is allowed when the task needs them.
+4. When changing browser-extension behavior, consider Chrome extension constraints and real browser runtime behavior, not just Node tests.
+5. Treat accessibility regressions as product regressions: focus visibility, hit targets, reduced motion, contrast, and non-hover access matter.
 
 ## Validation
 

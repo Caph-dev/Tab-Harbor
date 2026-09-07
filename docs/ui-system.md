@@ -1,12 +1,10 @@
 # Tab Harbor UI System
 
-Tab Harbor uses Astryx as design-system inspiration, not as a runtime UI library. The extension remains a static, dependency-light Manifest V3 workspace made from HTML, CSS, and ordered scripts.
+Tab Harbor uses Astryx as design-system inspiration for tokens, primitives, accessible states, and theme discipline. The current dashboard still ships as HTML, CSS, and ordered scripts; adopting a UI library, CSS toolchain, bundler, or generated build output is allowed when a task needs it.
 
 ## Positioning
 
 Tab Harbor should feel like a quiet browser workbench: calm, literary, composed, and useful before it is decorative. Astryx is useful here for its system thinking: tokens, reusable primitives, accessible states, theme discipline, and agent-readable component boundaries.
-
-Do not import Astryx, React, StyleX, a bundler, or generated build output for this path.
 
 ## Principles
 
@@ -17,7 +15,7 @@ Do not import Astryx, React, StyleX, a bundler, or generated build output for th
 - Keep keyboard focus visible.
 - Do not rely on hover alone for critical controls.
 - Make reduced-motion states understandable without animation.
-- Keep component boundaries usable in plain HTML and CSS.
+- Prefer clear component boundaries, whether expressed in CSS primitives or a later UI framework.
 
 ## Token layers
 
@@ -40,7 +38,7 @@ Prefer adding new component CSS against `--th-*` aliases. Keep existing project 
 
 ## Component primitives
 
-The local component foundation is CSS-only:
+The local component foundation is currently CSS-only:
 
 - `.th-surface`: paper-like bounded surface.
 - `.th-card`: card surface for grouped content.
@@ -67,10 +65,4 @@ When adding or refactoring UI:
 
 ## Non-goals
 
-- No React migration.
-- No StyleX runtime or build integration.
-- No root `package.json` or package-manager workflow.
-- No generated component output.
 - No global visual redesign.
-
-If a future task needs real Astryx components, isolate that work in a separate experiment or React island rather than changing the main dashboard architecture.

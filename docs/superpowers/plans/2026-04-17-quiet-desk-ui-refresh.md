@@ -6,7 +6,7 @@
 
 **Architecture:** Adjust the extension's existing HTML/CSS-first layout instead of rebuilding the page. Keep the current data flows in `app.js`, add a small amount of supporting UI copy/state wiring, and tighten the visual system so the page becomes more legible without losing its editorial warmth.
 
-**Tech Stack:** Plain HTML, CSS, vanilla JavaScript, Node `node:test`
+**Tech Stack (this plan, 2026-04-17):** Plain HTML, CSS, vanilla JavaScript, Node `node:test`. Historical snapshot only; it does not forbid a later bundler, UI framework, or build step.
 
 ---
 

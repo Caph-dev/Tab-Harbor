@@ -73,7 +73,7 @@ Tab Harbor 把新标签页理解为一个返回点。每次打开它，都应该
 
 ### 4. 本地优先，保持轻量
 
-项目采用 Manifest V3、原生 HTML、CSS 与 JavaScript，没有框架、打包器或构建步骤。核心数据保存在浏览器中；可选跨设备同步直接使用 Chrome Sync，而不是额外建立一套云端账户体系。
+Tab Harbor 使用 Manifest V3。核心数据保存在浏览器中；可选跨设备同步直接使用 Chrome Sync，而不是额外建立一套云端账户体系。
 
 ## 审美与设计
 
@@ -123,7 +123,7 @@ Tab Harbor 不要求注册账户，也不运行项目自有的数据服务器。
 
 ## 安装方法
 
-目前项目以未打包 Chrome 扩展的形式使用，无需安装依赖或执行构建命令。
+目前项目以未打包 Chrome 扩展的形式使用。当前加载路径不要求先安装依赖或执行构建命令。
 
 ### 方式一：克隆仓库
 
@@ -157,7 +157,7 @@ cd tab-harbor
 
 ## 开发与验证
 
-Tab Harbor 是一个有意保持简单的静态扩展：
+当前仓库仍以 `extension/` 下的静态文件作为 Chrome 加载入口：
 
 ```text
 extension/
@@ -171,13 +171,13 @@ extension/
 └── popup/                 # 工具栏 Popup
 ```
 
-无需 `npm install`。测试使用 Node 内置测试运行器：
+当前测试使用 Node 内置测试运行器，不依赖 `npm install`：
 
 ```bash
 node --test extension/*.test.js
 ```
 
-涉及脚本加载、交互或扩展权限的变更，还应在真实 Chrome 扩展页面中验证。经典 `<script>` 的加载顺序是运行时合同的一部分。
+涉及脚本加载、交互或扩展权限的变更，还应在真实 Chrome 扩展页面中验证。在经典 `<script>` 仍被使用时，其加载顺序是运行时合同的一部分。
 
 ## 兼容性与许可
 
@@ -248,7 +248,7 @@ There are no streaks, productivity scores, growth charts, or theatrical completi
 
 ### 4. Local-first and lightweight
 
-Tab Harbor uses Manifest V3 and plain HTML, CSS, and JavaScript—without a framework, bundler, or build step. Core data lives in the browser. Optional cross-device synchronization uses Chrome Sync directly rather than introducing another cloud account.
+Tab Harbor uses Manifest V3. Core data lives in the browser. Optional cross-device synchronization uses Chrome Sync directly rather than introducing another cloud account.
 
 ## Aesthetic direction
 
@@ -298,7 +298,7 @@ Tab Harbor does not require an account and does not operate a proprietary data s
 
 ## Installation
 
-Tab Harbor currently ships as an unpacked Chrome extension. No dependency installation or build command is required.
+Tab Harbor currently ships as an unpacked Chrome extension. The current load path does not require installing dependencies or running a build command.
 
 ### Clone the repository
 
@@ -330,7 +330,7 @@ Disable or remove Tab Harbor from `chrome://extensions/`. Chrome will restore it
 
 ## Development
 
-Tab Harbor intentionally remains a static, dependency-light extension:
+The repository currently loads from static files under `extension/`:
 
 ```text
 extension/
@@ -344,13 +344,13 @@ extension/
 └── popup/                 # Toolbar popup
 ```
 
-There is no `npm install` step. Tests use Node's built-in test runner:
+Current tests use Node's built-in test runner and do not require `npm install`:
 
 ```bash
 node --test extension/*.test.js
 ```
 
-Changes involving script loading, interaction, or extension permissions should also be verified on a real Chrome extension page. The order of classic `<script>` tags is part of the runtime contract.
+Changes involving script loading, interaction, or extension permissions should also be verified on a real Chrome extension page. While classic `<script>` tags remain in use, their order is part of the runtime contract.
 
 ## Compatibility and license
 

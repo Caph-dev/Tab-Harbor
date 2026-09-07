@@ -139,7 +139,7 @@ disc icons. Automatic analysis may change as classifiers improve, but the
 
 ## Runtime contract
 
-The extension uses ordered classic scripts with no build step.
+The dashboard currently loads ordered classic scripts. Catalog load order remains part of that runtime until a module or build pipeline replaces it.
 
 - `theme-catalog.js` must load before `theme-controls.js` on the dashboard and
   popup surfaces.
